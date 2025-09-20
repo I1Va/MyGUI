@@ -7,6 +7,7 @@
 #include <iostream>
 #include <vector>
 #include <cassert>
+#include <functional>
 
 
 
@@ -14,24 +15,44 @@
 
 
 
+inline bool isInsideRect(const SDL_Rect& rect, const int x, const int y) {
+    return x >= rect.x && x <= (rect.x + rect.w) && y >= rect.y && y <= rect.y + rect.h;
+}
 
-
-
+inline bool isMouseEvent(const SDL_Event &event) {
+    return  event.type == SDL_MOUSEMOTION ||
+            event.type == SDL_MOUSEBUTTONDOWN || 
+            event.type == SDL_MOUSEBUTTONUP || 
+            event.type == SDL_MOUSEWHEEL;
+}
 
 class MGWidget {
 friend class MGWindow;
 
 protected:
-    SDL_Rect viewport_;
+    SDL_Rect viewport_ = {};
+    int width_ = 0;
+    int height_ = 0;
     
-    MGWidget(const int x, const int y, const int width, const int height, const int windowOffsetX, const int windowOffsetY) {
-        viewport_ = {x + windowOffsetX, y + windowOffsetY, width + windowOffsetX, height + windowOffsetY};
+    MGWidget(const int x, const int y, const int width, const int height, const int windowOffsetX, const int windowOffsetY):
+        width_(width), height_(height)
+    {
+        viewport_ = {x + windowOffsetX, y + windowOffsetY, width, height};
     }
 
     ~MGWidget() = default;
 
 private:
     virtual void paintEvent(SDL_Renderer* renderer) {}
+
+
+    bool isInside(const int x, const int y) {
+        return isInsideRect(viewport_, x, y);
+    }
+
+    virtual void handleEvent(const SDL_Event &event) {}
+
+    virtual void update() {}
 
     void render(SDL_Renderer* renderer) {
         assert(renderer);
@@ -48,11 +69,7 @@ private:
         SDL_RenderSetViewport(renderer, &viewport_);
         SDL_RenderSetClipRect(renderer, &clipRect);
 
-        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255); // WIDGET BACKGROUND COLOR
-        SDL_RenderFillRect(renderer, &clipRect);
-
         paintEvent(renderer);
-
 
         SDL_RenderSetViewport(renderer, &prevViewPort);
         SDL_RenderSetClipRect(renderer, &prevClip);
@@ -64,16 +81,72 @@ private:
 };
 
 
+class MGButton : public MGWidget {
+friend class MGWindow;
+    bool pressed_ = false;
+    std::function<void()> onClick;
+
+private:
+    MGButton(const int x, const int y, const int width, const int height, const int windowOffsetX, const int windowOffsetY):
+        MGWidget(x, y, width, height, windowOffsetX, windowOffsetY) {}
+
+    void paintEvent(SDL_Renderer* renderer) override {
+        if (pressed_) {
+            setPressedTexture(renderer);
+        } else {
+            setUnPressedTexture(renderer);
+        }
+    }
+
+    void setPressedTexture(SDL_Renderer* renderer) {
+        assert(renderer);
+
+        SDL_Rect buttonRect = {0, 0, width_, height_};
+        
+        SDL_SetRenderDrawColor(renderer, 100, 100, 100, 255);
+        SDL_RenderFillRect(renderer, &buttonRect);    
+    }
+
+    void setUnPressedTexture(SDL_Renderer* renderer) {
+        assert(renderer);
+
+        SDL_Rect buttonRect = {0, 0, width_, height_};
+        
+        SDL_SetRenderDrawColor(renderer, 50, 50, 50, 255);
+        SDL_RenderFillRect(renderer, &buttonRect);    
+    }
+
+    void handleEvent(const SDL_Event &event) override {
+        switch (event.type) {
+            case SDL_MOUSEBUTTONDOWN:
+                pressed_ = true;
+                if (onClick) onClick();
+                break;
+            case SDL_MOUSEBUTTONUP:
+                pressed_ = false;
+                break;
+            default:
+                break;
+        }
+    }
+
+};
+
+
 
 class MGCanvas : public MGWidget {
+friend class MGWindow;
 
 private:
     void paintEvent(SDL_Renderer* renderer) override {
+        SDL_Rect widgetRect = {0, 0, width_, height_};
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255); // MGCanvas BACKGROUND COLOR
+        SDL_RenderFillRect(renderer, &widgetRect);
+
         SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
         SDL_RenderDrawLine(renderer, 0, 0, 1000, 1000);
     }
 
-public:
     MGCanvas(const int x, const int y, const int width, const int height, const int windowOffsetX, const int windowOffsetY):
         MGWidget(x, y, width, height, windowOffsetX, windowOffsetY) {}
 };
@@ -84,14 +157,41 @@ public:
 class MGWindow {
 friend class MGMainWindow;
     SDL_Rect viewport_;
+    int width_ = 0;
+    int height_ = 0;
 
     std::vector<MGWidget *> widgets_;
 
 
 private:
     MGWindow();
-    MGWindow(const int x, const int y, const int width, const int height) {
+    MGWindow(const int x, const int y, const int width, const int height):
+    width_(width), height_(height) 
+    {
         viewport_ = {x, y, width, height};
+    }
+
+    bool isInside(const int x, const int y) {
+        return isInsideRect(viewport_, x, y);
+    }
+
+    void handleEvent(const SDL_Event &event) {
+        int mouseX = 0, mouseY = 0;
+    
+        if (isMouseEvent(event)) {
+            SDL_GetMouseState(&mouseX, &mouseY);
+            for (auto it = widgets_.rbegin(); it != widgets_.rend(); ++it) {
+                if ((*it)->isInside(mouseX, mouseY)) {
+                    (*it)->handleEvent(event);
+                }
+            }
+        }
+    }
+
+    void update() {
+        for (auto widget : widgets_) {
+            widget->update();
+        }
     }
 
     void render(SDL_Renderer* renderer) {
@@ -109,11 +209,12 @@ private:
         SDL_RenderSetViewport(renderer, &viewport_);
         SDL_RenderSetClipRect(renderer, &clipRect);
 
+        SDL_Rect widgetRect = {0, 0, width_, height_};
         SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255); // WINDOW BACKGROUND COLOR
-        SDL_RenderFillRect(renderer, &clipRect);
-
+        SDL_RenderFillRect(renderer, &widgetRect);
+    
         for (auto widget : widgets_) {
-            widget->render(renderer); // paint event
+            widget->render(renderer); // paint events
         }
 
         SDL_RenderSetViewport(renderer, &prevViewPort);
@@ -126,6 +227,11 @@ public:
         MGCanvas *canvas = new MGCanvas(x, y, std::min(width, viewport_.w - x), std::min(height, viewport_.h - y), viewport_.x, viewport_.y);
         widgets_.push_back((MGWidget *) canvas);
     }
+
+    void addButton(const int x, const int y, const int width, const int height) {
+        MGButton *button = new MGButton(x, y, std::min(width, viewport_.w - x), std::min(height, viewport_.h - y), viewport_.x, viewport_.y);
+        widgets_.push_back((MGWidget *) button);
+    }
 };
 
 class MGMainWindow {
@@ -137,14 +243,14 @@ friend class MGApplication;
     int height = 0;
     int width = 0;
 
-    std::vector<MGWindow *> windows;
+    std::vector<MGWindow *> windows_;
 
 public:
     MGWindow *addWindow(const int x, const int y, const int width, const int height) {
         MGWindow *newWindow = new MGWindow(x, y, width, height);
-        windows.push_back(newWindow);
+        windows_.push_back(newWindow);
 
-        return windows.back();
+        return windows_.back();
     }
 
 private:
@@ -180,12 +286,32 @@ private:
         if (window_) SDL_DestroyWindow(window_);
         if (renderer_) SDL_DestroyRenderer(renderer_);
     }
+    
+
+    void handleEvent(const SDL_Event &event) {
+        int mouseX = 0, mouseY = 0;
+    
+        if (isMouseEvent(event)) {
+            SDL_GetMouseState(&mouseX, &mouseY);
+            for (auto it = windows_.rbegin(); it != windows_.rend(); ++it) {
+                if ((*it)->isInside(mouseX, mouseY)) {
+                    (*it)->handleEvent(event);
+                }
+            }
+        }
+    }
+
+    void update() {
+        for (auto window : windows_) {
+            window->update();
+        }
+    }
 
     void render() {
         SDL_SetRenderDrawColor(renderer_, 50, 50, 50, 255);
         SDL_RenderClear(renderer_);
 
-        for (auto childWindow : windows) {
+        for (auto childWindow : windows_) {
             childWindow->render(renderer_);
         }
 
@@ -197,6 +323,7 @@ private:
 
 class MGApplication {
     MGMainWindow *mainWindow_ = nullptr;
+    const Uint32 frameDelay = 16;
     // SignalManager signalManager;
 
 public:
@@ -221,15 +348,31 @@ public:
 
     MGMainWindow *mainWindow() { return mainWindow_; }
 
+    void handleEvents(bool *running) {
+        assert(running);
+    
+        SDL_Event event;
+        while (SDL_PollEvent(&event)) {
+            if (event.type == SDL_QUIT || event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE) {
+                *running = false;
+                break;
+            }
+            
+            mainWindow_->handleEvent(event);
+        }
+    }
+
     void run() {
-        SDL_Event e;
         bool running = true;
         while (running) {
-            while (SDL_PollEvent(&e)) {
-                if (e.type == SDL_QUIT) running = false;
-                if (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE) running = false;
-            }
+            Uint32 frameStart =  SDL_GetTicks();
+        
+            handleEvents(&running);
+            mainWindow_->update();
             mainWindow_->render();
+
+            Uint32 frameTime = SDL_GetTicks() - frameStart;
+            if (frameDelay > frameTime) SDL_Delay(frameDelay - frameTime);
         }
     }
 };
