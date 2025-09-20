@@ -47,7 +47,7 @@ friend class MGApplication;
 private:
     SignalManager() = default;
     ~SignalManager() = default;
-
+public:
     void connect(const std::string &singnalString, std::function<void()> slotFunction) {
         signals[singnalString].push_back(slotFunction);
     }
@@ -85,7 +85,6 @@ protected:
 private:
     virtual void paintEvent(SDL_Renderer* renderer) {}
 
-
     bool isInside(const int x, const int y) {
         return isInsideRect(viewport_, x, y);
     }
@@ -115,6 +114,10 @@ private:
         SDL_RenderSetClipRect(renderer, &prevClip);
         SDL_SetRenderDrawColor(renderer, prev_r, prev_g, prev_b, prev_a);
     }
+public:
+  void connectSignal(const std::string &singnalString, std::function<void()> slotFunction) {
+        signalManager_->connect(singnalString, slotFunction);
+    }
 };
 
 class MGButton : public MGWidget {
@@ -127,15 +130,17 @@ friend class MGWindow;
    
     
     bool pressed_ = false;
-    std::function<void()> onClick;
+    std::function<void()> onClickFunction_;
 
 private:
     MGButton(SignalManager *signalManager, 
              const SDL_Point &inWindowPos, const int width, const int height, const SDL_Point &windowOffset, 
-             const char *pressedButtonTexturePath, const char *unpressedButtonTexturePath):
+             const char *pressedButtonTexturePath, const char *unpressedButtonTexturePath, std::function<void()> onClickFunction):
         pressedButtonTexturePath_(pressedButtonTexturePath),
         unpressedButtonTexturePath_(unpressedButtonTexturePath),
-        MGWidget(signalManager, inWindowPos, width, height, windowOffset) {}
+        MGWidget(signalManager, inWindowPos, width, height, windowOffset),
+        onClickFunction_(onClickFunction)
+        {}
 
     ~MGButton() override {
         if (pressedButtonTexture_) SDL_DestroyTexture(pressedButtonTexture_);
@@ -180,7 +185,7 @@ private:
         switch (event.type) {
             case SDL_MOUSEBUTTONDOWN:
                 pressed_ = true;
-                if (onClick) onClick();
+                if (onClickFunction_) onClickFunction_();
                 break;
             case SDL_MOUSEBUTTONUP:
                 pressed_ = false;
@@ -309,19 +314,24 @@ private:
     }
 
 public:
-    void addCanvas(const int x, const int y, const int width, const int height) {
+    MGCanvas *addCanvas(const int x, const int y, const int width, const int height) {
         MGCanvas *canvas = new MGCanvas(signalManager_, {x, y}, std::min(width, viewport_.w - x), std::min(height, viewport_.h - y), {viewport_.x, viewport_.y});
         widgets_.push_back((MGWidget *) canvas);
+
+        return (MGCanvas *) widgets_.back();
     }
 
-    void addButton(const int x, const int y, const int width, const int height, 
-                   const char *pressedButtonTexturePath=NULL, const char *unpressedButtonTexturePath=NULL
+    MGButton *addButton(const int x, const int y, const int width, const int height, 
+                        const char *pressedButtonTexturePath=nullptr, const char *unpressedButtonTexturePath=nullptr,
+                        std::function<void()> onClickFunction=nullptr
     ) {    
         MGButton *button = new MGButton(signalManager_, 
                                         {x, y}, std::min(width, viewport_.w - x), std::min(height, viewport_.h - y), {viewport_.x, viewport_.y},
-                                        pressedButtonTexturePath, unpressedButtonTexturePath);
+                                        pressedButtonTexturePath, unpressedButtonTexturePath, onClickFunction);
                                 
         widgets_.push_back((MGWidget *) button);
+
+        return (MGButton *) widgets_.back();
     }
 };
 
@@ -430,7 +440,6 @@ private:
         SDL_RenderPresent(renderer_);
     }
 };
-
 
 class MGApplication {
     MGMainWindow *mainWindow_ = nullptr;
