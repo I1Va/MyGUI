@@ -399,7 +399,8 @@ private:
             SDL_GetMouseState(&mouseX, &mouseY);
             for (auto it = windows_.rbegin(); it != windows_.rend(); ++it) {
                 if ((*it)->isInside(mouseX, mouseY)) {
-                    (*it)->handleEvent(event);
+                    (*it)->handleEvent(event); 
+                    break; // only one window can handle mouse event
                 }
             }
         }
