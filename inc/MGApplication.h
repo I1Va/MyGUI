@@ -1,18 +1,15 @@
 #ifndef MGAPPLICATION_H
 #define MGAPPLICATION_H
 
+#include <SDL2/SDL_image.h>
 #include <SDL2/SDL.h>
+
 #include <stdexcept>
 #include <memory>
 #include <iostream>
 #include <vector>
 #include <cassert>
 #include <functional>
-
-
-
-
-
 
 
 inline bool isInsideRect(const SDL_Rect& rect, const int x, const int y) {
@@ -25,6 +22,7 @@ inline bool isMouseEvent(const SDL_Event &event) {
             event.type == SDL_MOUSEBUTTONUP || 
             event.type == SDL_MOUSEWHEEL;
 }
+
 
 class MGWidget {
 friend class MGWindow;
@@ -47,7 +45,7 @@ protected:
         viewport_ = {inWindowPos.x + windowOffset.x, inWindowPos.y + windowOffset.y, width, height};
     }
 
-    ~MGWidget() = default;
+    virtual ~MGWidget() = default;
 
 private:
     virtual void paintEvent(SDL_Renderer* renderer) {}
@@ -82,22 +80,47 @@ private:
         SDL_RenderSetClipRect(renderer, &prevClip);
         SDL_SetRenderDrawColor(renderer, prev_r, prev_g, prev_b, prev_a);
     }
-
-    // TODO: add other virtual methods: handleEvent, update, etc.
-    
 };
 
 
 class MGButton : public MGWidget {
 friend class MGWindow;
+    const char *texturePath_;
+    SDL_Texture* texture_ = nullptr;
+    bool textureCreated = false;
+   
+    
     bool pressed_ = false;
     std::function<void()> onClick;
 
 private:
-    MGButton(const SDL_Point &inWindowPos, const int width, const int height, const SDL_Point &windowOffset):
-        MGWidget(inWindowPos, width, height, windowOffset) {}
+    MGButton(const SDL_Point &inWindowPos, const int width, const int height, const SDL_Point &windowOffset, const char *texturePath):
+        MGWidget(inWindowPos, width, height, windowOffset), texturePath_(texturePath) {}
+
+    ~MGButton() override {
+        if (texture_) SDL_DestroyTexture(texture_);
+    }
+
+    void initTexture(SDL_Renderer* renderer) {
+        assert(renderer);
+    
+        if (textureCreated) return;
+        textureCreated = true;
+    
+        if (texturePath_) {
+            SDL_Surface* surface = IMG_Load(texturePath_);
+            if (!surface) std::cerr << "MGButton texture load failed : " << texturePath_ << "\n";
+
+            if (surface) {
+                texture_ = SDL_CreateTextureFromSurface(renderer, surface);
+                SDL_FreeSurface(surface);
+            }
+        }        
+    }
 
     void paintEvent(SDL_Renderer* renderer) override {
+        initTexture(renderer);
+    
         if (pressed_) {
             setPressedTexture(renderer);
         } else {
@@ -118,9 +141,7 @@ private:
         assert(renderer);
 
         SDL_Rect buttonRect = {0, 0, width_, height_};
-        
-        SDL_SetRenderDrawColor(renderer, 50, 50, 50, 255);
-        SDL_RenderFillRect(renderer, &buttonRect);    
+        SDL_RenderCopy(renderer, texture_, NULL, &buttonRect); // draw texture    
     }
 
     void handleEvent(const SDL_Event &event) override {
@@ -254,8 +275,8 @@ public:
         widgets_.push_back((MGWidget *) canvas);
     }
 
-    void addButton(const int x, const int y, const int width, const int height) {
-        MGButton *button = new MGButton({x, y}, std::min(width, viewport_.w - x), std::min(height, viewport_.h - y), {viewport_.x, viewport_.y});
+    void addButton(const int x, const int y, const int width, const int height, const char *texturePath=NULL) {
+        MGButton *button = new MGButton({x, y}, std::min(width, viewport_.w - x), std::min(height, viewport_.h - y), {viewport_.x, viewport_.y}, texturePath);
         widgets_.push_back((MGWidget *) button);
     }
 };
@@ -362,7 +383,8 @@ public:
 
     void setMainWindow(const char *windowTitle, const int width, const int height) {
         assert(windowTitle);
-    
+        if (IMG_Init(IMG_INIT_PNG) == 0) throw std::runtime_error(std::string("SDL_Init failed") + SDL_GetError());
+
         if (SDL_Init(SDL_INIT_VIDEO) != 0) throw std::runtime_error(std::string("SDL_Init failed") + SDL_GetError());
     
         try {

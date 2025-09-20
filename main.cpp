@@ -4,6 +4,8 @@ const int MAIN_WINDOW_WIDTH = 800;
 const int MAIN_WINDOW_HEIGHT = 600;
 const char MAIN_WINDOW_TITLE[] = "MyGUI";
 
+const char BUTTON_IMAGE[] = "images/button.png";
+
 int main(void) {
 
     MGApplication application;
@@ -19,7 +21,7 @@ int main(void) {
     MGWindow *window2 = application.mainWindow()->addWindow(300, 300, 400, 400);
     window1->addCanvas(30, 30, 1000, 1000);
     window2->addCanvas(60, 60, 300, 300);
-    window2->addButton(30, 30, 30, 30);
+    window2->addButton(30, 30, 30, 30, BUTTON_IMAGE);
 
 
 
