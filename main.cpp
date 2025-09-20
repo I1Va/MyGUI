@@ -15,9 +15,15 @@ int main(void) {
         return -1;
     }
 
-    application.mainWindow()->addWindow(0, 0, 20, 20);
-    application.mainWindow()->addWindow(0, 0, 255, 100);
+    MGWindow *window1 = application.mainWindow()->addWindow(0, 0, 255, 255);
+    MGWindow *window2 = application.mainWindow()->addWindow(300, 300, 400, 400);
+    window1->addCanvas(30, 30, 1000, 1000);
+    window2->addCanvas(60, 60, 30, 30);
+
+
+
     application.run();
+
 
     return 0;
 }

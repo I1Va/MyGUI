@@ -9,41 +9,128 @@
 #include <cassert>
 
 
-class MGWindow {
-    int x_ = 0;
-    int y_ = 0;
-    int width_ = 0;
-    int height_ = 0;
 
-    MGWindow();
-    MGWindow(const int x, const int y, const int width, const int height): x_(x), y_(y), width_(width), height_(height) {}
+
+
+
+
+
+
+
+
+class MGWidget {
+friend class MGWindow;
+
+protected:
+    SDL_Rect viewport_;
+    
+    MGWidget(const int x, const int y, const int width, const int height, const int windowOffsetX, const int windowOffsetY) {
+        viewport_ = {x + windowOffsetX, y + windowOffsetY, width + windowOffsetX, height + windowOffsetY};
+    }
+
+    ~MGWidget() = default;
+
+private:
+    virtual void paintEvent(SDL_Renderer* renderer) {}
 
     void render(SDL_Renderer* renderer) {
         assert(renderer);
-    
+        
         SDL_Rect prevClip;
         SDL_RenderGetClipRect(renderer, &prevClip);
+        SDL_Rect prevViewPort;
+        SDL_RenderGetViewport(renderer, &prevViewPort);
+        Uint8 prev_r, prev_g, prev_b, prev_a;
+        SDL_GetRenderDrawColor(renderer, &prev_r, &prev_g, &prev_b, &prev_a);
 
-        SDL_Rect clipRect = { x_, y_, width_, height_ };
+
+        SDL_Rect clipRect = {0, 0, viewport_.w, viewport_.h};
+        SDL_RenderSetViewport(renderer, &viewport_);
         SDL_RenderSetClipRect(renderer, &clipRect);
 
-        SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255); // WIDGET BACKGROUND COLOR
         SDL_RenderFillRect(renderer, &clipRect);
 
-        // Render child widgets — they draw within this clip
-        // for (auto& widget : widgets_) {
-        //     widget->render(renderer);
-        // }
-    
+        paintEvent(renderer);
+
+
+        SDL_RenderSetViewport(renderer, &prevViewPort);
         SDL_RenderSetClipRect(renderer, &prevClip);
+        SDL_SetRenderDrawColor(renderer, prev_r, prev_g, prev_b, prev_a);
     }
 
+    // TODO: add other virtual methods: handleEvent, update, etc.
     
-    friend class MGMainWindow;
 };
 
 
+
+class MGCanvas : public MGWidget {
+
+private:
+    void paintEvent(SDL_Renderer* renderer) override {
+        SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
+        SDL_RenderDrawLine(renderer, 0, 0, 1000, 1000);
+    }
+
+public:
+    MGCanvas(const int x, const int y, const int width, const int height, const int windowOffsetX, const int windowOffsetY):
+        MGWidget(x, y, width, height, windowOffsetX, windowOffsetY) {}
+};
+
+
+
+
+class MGWindow {
+friend class MGMainWindow;
+    SDL_Rect viewport_;
+
+    std::vector<MGWidget *> widgets_;
+
+
+private:
+    MGWindow();
+    MGWindow(const int x, const int y, const int width, const int height) {
+        viewport_ = {x, y, width, height};
+    }
+
+    void render(SDL_Renderer* renderer) {
+        assert(renderer);
+        
+        
+        SDL_Rect prevClip;
+        SDL_RenderGetClipRect(renderer, &prevClip);
+        SDL_Rect prevViewPort;
+        SDL_RenderGetViewport(renderer, &prevViewPort);
+        Uint8 prev_r, prev_g, prev_b, prev_a;
+        SDL_GetRenderDrawColor(renderer, &prev_r, &prev_g, &prev_b, &prev_a);
+
+        SDL_Rect clipRect = {0, 0, viewport_.w, viewport_.h};
+        SDL_RenderSetViewport(renderer, &viewport_);
+        SDL_RenderSetClipRect(renderer, &clipRect);
+
+        SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255); // WINDOW BACKGROUND COLOR
+        SDL_RenderFillRect(renderer, &clipRect);
+
+        for (auto widget : widgets_) {
+            widget->render(renderer); // paint event
+        }
+
+        SDL_RenderSetViewport(renderer, &prevViewPort);
+        SDL_RenderSetClipRect(renderer, &prevClip);
+        SDL_SetRenderDrawColor(renderer, prev_r, prev_g, prev_b, prev_a);
+    }
+
+public:
+    void addCanvas(const int x, const int y, const int width, const int height) {
+        MGCanvas *canvas = new MGCanvas(x, y, std::min(width, viewport_.w - x), std::min(height, viewport_.h - y), viewport_.x, viewport_.y);
+        widgets_.push_back((MGWidget *) canvas);
+    }
+};
+
 class MGMainWindow {
+friend class MGApplication;
+
     SDL_Window* window_ = nullptr;
     SDL_Renderer *renderer_ = nullptr;
 
@@ -51,12 +138,13 @@ class MGMainWindow {
     int width = 0;
 
     std::vector<MGWindow *> windows;
-    friend class MGApplication;
 
 public:
-    void addWindow(const int x, const int y, const int width, const int height) {
+    MGWindow *addWindow(const int x, const int y, const int width, const int height) {
         MGWindow *newWindow = new MGWindow(x, y, width, height);
         windows.push_back(newWindow);
+
+        return windows.back();
     }
 
 private:
@@ -112,7 +200,7 @@ class MGApplication {
     // SignalManager signalManager;
 
 public:
-    MGApplication() {}
+    MGApplication() = default;
     
     ~MGApplication() {
         SDL_Quit();
