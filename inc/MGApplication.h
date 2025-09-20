@@ -198,8 +198,10 @@ friend class MGMainWindow;
     int width_ = 0;
     int height_ = 0;
 
-    SDL_Point moveDelta = {};
-    bool moved = false;
+    SDL_Point draggingStateDelta = {};
+    bool draggingState = false;
+
+    bool wasUpdated = false;
 
     std::vector<MGWidget *> widgets_;
 
@@ -232,22 +234,29 @@ private:
         
         Uint32 mouseButtonState = event.motion.state;
         if (mouseOnFreeSpace && event.type == SDL_MOUSEMOTION && (mouseButtonState & SDL_BUTTON(SDL_BUTTON_LEFT))) {
-            moveDelta.x += event.motion.xrel;
-            moveDelta.y += event.motion.yrel;
-            moved = true;
+            draggingStateDelta.x += event.motion.xrel;
+            draggingStateDelta.y += event.motion.yrel;
+            draggingState = true;
         }
     }
 
-    void update() {
-        if (moved) {
-            viewport_.x += moveDelta.x;
-            viewport_.y += moveDelta.y;
-            for (auto widget : widgets_) {
-                widget->updateViewport({viewport_.x, viewport_.y});
-            }
-            moved = false;
-            moveDelta = {0, 0};
+    void dragWindow() {
+        viewport_.x += draggingStateDelta.x;
+        viewport_.y += draggingStateDelta.y;
+        for (auto widget : widgets_) {
+            widget->updateViewport({viewport_.x, viewport_.y});
         }
+        draggingState = false;
+        draggingStateDelta = {0, 0};
+    }
+
+    void update() {
+        if (draggingState) {
+            dragWindow();
+            wasUpdated = true;
+        }
+        
+
         for (auto widget : widgets_) {
             widget->update();
         }
@@ -363,11 +372,29 @@ private:
             }
         }
     }
+    
+    void reorderWindows() {
+        int curWindowIdx = windows_.size() - 1;
+        while (curWindowIdx - 1 >= 0) {
+            MGWindow *leftWindow = windows_[curWindowIdx - 1];
+            MGWindow *rightWindow = windows_[curWindowIdx];
+            if (leftWindow->wasUpdated && !rightWindow->wasUpdated) {
+                std::swap(windows_[curWindowIdx - 1], windows_[curWindowIdx]);
+            }
+            curWindowIdx--;
+        }
+
+        for (auto window : windows_) {
+            window->wasUpdated = false;
+        }
+    }
 
     void update() {
         for (auto window : windows_) {
             window->update();
         }
+
+        reorderWindows();
     }
 
     void render() {
