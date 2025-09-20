@@ -31,13 +31,20 @@ friend class MGWindow;
 
 protected:
     SDL_Rect viewport_ = {};
-    int width_ = 0;
-    int height_ = 0;
+    SDL_Point inWindowPos_ = {};
+
+    int width_;
+    int height_;
     
-    MGWidget(const int x, const int y, const int width, const int height, const int windowOffsetX, const int windowOffsetY):
-        width_(width), height_(height)
+    void updateViewport(const SDL_Point &newWindowOffset) {
+        viewport_.x = inWindowPos_.x + newWindowOffset.x;
+        viewport_.y = inWindowPos_.y + newWindowOffset.y;
+    }
+
+    MGWidget(const SDL_Point &inWindowPos, const int width, const int height, const SDL_Point &windowOffset): 
+        width_(width), height_(height), inWindowPos_(inWindowPos)
     {
-        viewport_ = {x + windowOffsetX, y + windowOffsetY, width, height};
+        viewport_ = {inWindowPos.x + windowOffset.x, inWindowPos.y + windowOffset.y, width, height};
     }
 
     ~MGWidget() = default;
@@ -87,8 +94,8 @@ friend class MGWindow;
     std::function<void()> onClick;
 
 private:
-    MGButton(const int x, const int y, const int width, const int height, const int windowOffsetX, const int windowOffsetY):
-        MGWidget(x, y, width, height, windowOffsetX, windowOffsetY) {}
+    MGButton(const SDL_Point &inWindowPos, const int width, const int height, const SDL_Point &windowOffset):
+        MGWidget(inWindowPos, width, height, windowOffset) {}
 
     void paintEvent(SDL_Renderer* renderer) override {
         if (pressed_) {
@@ -147,11 +154,9 @@ private:
         SDL_RenderDrawLine(renderer, 0, 0, 1000, 1000);
     }
 
-    MGCanvas(const int x, const int y, const int width, const int height, const int windowOffsetX, const int windowOffsetY):
-        MGWidget(x, y, width, height, windowOffsetX, windowOffsetY) {}
+    MGCanvas(const SDL_Point &inWindowPos, const int width, const int height, const SDL_Point &windowOffset):
+        MGWidget(inWindowPos, width, height, windowOffset) {}
 };
-
-
 
 
 class MGWindow {
@@ -159,6 +164,9 @@ friend class MGMainWindow;
     SDL_Rect viewport_;
     int width_ = 0;
     int height_ = 0;
+
+    SDL_Point moveDelta = {};
+    bool moved = false;
 
     std::vector<MGWidget *> widgets_;
 
@@ -177,18 +185,36 @@ private:
 
     void handleEvent(const SDL_Event &event) {
         int mouseX = 0, mouseY = 0;
-    
+        bool mouseOnFreeSpace = true;
+
         if (isMouseEvent(event)) {
             SDL_GetMouseState(&mouseX, &mouseY);
             for (auto it = widgets_.rbegin(); it != widgets_.rend(); ++it) {
                 if ((*it)->isInside(mouseX, mouseY)) {
                     (*it)->handleEvent(event);
+                    mouseOnFreeSpace = false;
                 }
             }
+        }
+        
+        Uint32 mouseButtonState = event.motion.state;
+        if (mouseOnFreeSpace && event.type == SDL_MOUSEMOTION && (mouseButtonState & SDL_BUTTON(SDL_BUTTON_LEFT))) {
+            moveDelta.x += event.motion.xrel;
+            moveDelta.y += event.motion.yrel;
+            moved = true;
         }
     }
 
     void update() {
+        if (moved) {
+            viewport_.x += moveDelta.x;
+            viewport_.y += moveDelta.y;
+            for (auto widget : widgets_) {
+                widget->updateViewport({viewport_.x, viewport_.y});
+            }
+            moved = false;
+            moveDelta = {0, 0};
+        }
         for (auto widget : widgets_) {
             widget->update();
         }
@@ -224,12 +250,12 @@ private:
 
 public:
     void addCanvas(const int x, const int y, const int width, const int height) {
-        MGCanvas *canvas = new MGCanvas(x, y, std::min(width, viewport_.w - x), std::min(height, viewport_.h - y), viewport_.x, viewport_.y);
+        MGCanvas *canvas = new MGCanvas({x, y}, std::min(width, viewport_.w - x), std::min(height, viewport_.h - y), {viewport_.x, viewport_.y});
         widgets_.push_back((MGWidget *) canvas);
     }
 
     void addButton(const int x, const int y, const int width, const int height) {
-        MGButton *button = new MGButton(x, y, std::min(width, viewport_.w - x), std::min(height, viewport_.h - y), viewport_.x, viewport_.y);
+        MGButton *button = new MGButton({x, y}, std::min(width, viewport_.w - x), std::min(height, viewport_.h - y), {viewport_.x, viewport_.y});
         widgets_.push_back((MGWidget *) button);
     }
 };
