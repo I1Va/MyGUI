@@ -5,11 +5,61 @@
 #include <stdexcept>
 #include <memory>
 #include <iostream>
+#include <vector>
+#include <cassert>
+
+
+class MGWindow {
+    int x_ = 0;
+    int y_ = 0;
+    int width_ = 0;
+    int height_ = 0;
+
+    MGWindow();
+    MGWindow(const int x, const int y, const int width, const int height): x_(x), y_(y), width_(width), height_(height) {}
+
+    void render(SDL_Renderer* renderer) {
+        assert(renderer);
+    
+        SDL_Rect prevClip;
+        SDL_RenderGetClipRect(renderer, &prevClip);
+
+        SDL_Rect clipRect = { x_, y_, width_, height_ };
+        SDL_RenderSetClipRect(renderer, &clipRect);
+
+        SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+        SDL_RenderFillRect(renderer, &clipRect);
+
+        // Render child widgets — they draw within this clip
+        // for (auto& widget : widgets_) {
+        //     widget->render(renderer);
+        // }
+    
+        SDL_RenderSetClipRect(renderer, &prevClip);
+    }
+
+    
+    friend class MGMainWindow;
+};
+
 
 class MGMainWindow {
     SDL_Window* window_ = nullptr;
     SDL_Renderer *renderer_ = nullptr;
 
+    int height = 0;
+    int width = 0;
+
+    std::vector<MGWindow *> windows;
+    friend class MGApplication;
+
+public:
+    void addWindow(const int x, const int y, const int width, const int height) {
+        MGWindow *newWindow = new MGWindow(x, y, width, height);
+        windows.push_back(newWindow);
+    }
+
+private:
     MGMainWindow() {};
 
     MGMainWindow
@@ -18,6 +68,9 @@ class MGMainWindow {
         const int width,
         const int height
     ) {
+        this->width;
+        this->height;
+
         window_ = SDL_CreateWindow(
             windowTitle,     
             SDL_WINDOWPOS_CENTERED,        
@@ -41,16 +94,21 @@ class MGMainWindow {
     }
 
     void render() {
+        SDL_SetRenderDrawColor(renderer_, 50, 50, 50, 255);
+        SDL_RenderClear(renderer_);
+
+        for (auto childWindow : windows) {
+            childWindow->render(renderer_);
+        }
+
         SDL_RenderPresent(renderer_);
     }
-
-    friend class MGApplication;
+   
+    
 };
-
 
 class MGApplication {
     MGMainWindow *mainWindow_ = nullptr;
-
     // SignalManager signalManager;
 
 public:
@@ -62,6 +120,8 @@ public:
     }
 
     void setMainWindow(const char *windowTitle, const int width, const int height) {
+        assert(windowTitle);
+    
         if (SDL_Init(SDL_INIT_VIDEO) != 0) throw std::runtime_error(std::string("SDL_Init failed") + SDL_GetError());
     
         try {
@@ -71,6 +131,8 @@ public:
         }
     }
 
+    MGMainWindow *mainWindow() { return mainWindow_; }
+
     void run() {
         SDL_Event e;
         bool running = true;
@@ -79,15 +141,6 @@ public:
                 if (e.type == SDL_QUIT) running = false;
                 if (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE) running = false;
             }
-
-            // SDL_SetRenderDrawColor(ren, 30, 30, 30, 255);
-            // SDL_RenderClear(ren);
-
-            // /* simple white rectangle in center */
-            // SDL_Rect r = { 220, 140, 200, 200 };
-            // SDL_SetRenderDrawColor(ren, 255, 255, 255, 255);
-            // SDL_RenderFillRect(ren, &r);
-
             mainWindow_->render();
         }
     }
