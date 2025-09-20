@@ -23,6 +23,22 @@ inline bool isMouseEvent(const SDL_Event &event) {
             event.type == SDL_MOUSEWHEEL;
 }
 
+inline SDL_Texture* createTexture(const char *texturePath, SDL_Renderer* renderer) {
+    assert(renderer);
+
+    if (!texturePath) return nullptr;
+
+    SDL_Texture* resultTexture = nullptr;
+    SDL_Surface* surface = IMG_Load(texturePath);
+    if (!surface) std::cerr << "MGButton texture load failed : " << texturePath << "\n";
+
+    if (surface) {
+        resultTexture = SDL_CreateTextureFromSurface(renderer, surface);
+        SDL_FreeSurface(surface);
+    }
+
+    return resultTexture; 
+}
 
 class MGWidget {
 friend class MGWindow;
@@ -85,8 +101,10 @@ private:
 
 class MGButton : public MGWidget {
 friend class MGWindow;
-    const char *texturePath_;
-    SDL_Texture* texture_ = nullptr;
+    const char *pressedButtonTexturePath_;
+    const char *unpressedButtonTexturePath_;
+    SDL_Texture* pressedButtonTexture_ = nullptr;
+    SDL_Texture* unpressedButtonTexture_ = nullptr;
     bool textureCreated = false;
    
     
@@ -94,11 +112,15 @@ friend class MGWindow;
     std::function<void()> onClick;
 
 private:
-    MGButton(const SDL_Point &inWindowPos, const int width, const int height, const SDL_Point &windowOffset, const char *texturePath):
-        MGWidget(inWindowPos, width, height, windowOffset), texturePath_(texturePath) {}
+    MGButton(const SDL_Point &inWindowPos, const int width, const int height, const SDL_Point &windowOffset, 
+             const char *pressedButtonTexturePath, const char *unpressedButtonTexturePath):
+        pressedButtonTexturePath_(pressedButtonTexturePath),
+        unpressedButtonTexturePath_(unpressedButtonTexturePath),
+        MGWidget(inWindowPos, width, height, windowOffset) {}
 
     ~MGButton() override {
-        if (texture_) SDL_DestroyTexture(texture_);
+        if (pressedButtonTexture_) SDL_DestroyTexture(pressedButtonTexture_);
+        if (unpressedButtonTexture_) SDL_DestroyTexture(unpressedButtonTexture_);
     }
 
     void initTexture(SDL_Renderer* renderer) {
@@ -107,15 +129,8 @@ private:
         if (textureCreated) return;
         textureCreated = true;
     
-        if (texturePath_) {
-            SDL_Surface* surface = IMG_Load(texturePath_);
-            if (!surface) std::cerr << "MGButton texture load failed : " << texturePath_ << "\n";
-
-            if (surface) {
-                texture_ = SDL_CreateTextureFromSurface(renderer, surface);
-                SDL_FreeSurface(surface);
-            }
-        }        
+        pressedButtonTexture_ = createTexture(pressedButtonTexturePath_, renderer);    
+        unpressedButtonTexture_ = createTexture(unpressedButtonTexturePath_, renderer);    
     }
 
     void paintEvent(SDL_Renderer* renderer) override {
@@ -132,16 +147,14 @@ private:
         assert(renderer);
 
         SDL_Rect buttonRect = {0, 0, width_, height_};
-        
-        SDL_SetRenderDrawColor(renderer, 100, 100, 100, 255);
-        SDL_RenderFillRect(renderer, &buttonRect);    
+        SDL_RenderCopy(renderer, pressedButtonTexture_, NULL, &buttonRect);
     }
 
     void setUnPressedTexture(SDL_Renderer* renderer) {
         assert(renderer);
 
         SDL_Rect buttonRect = {0, 0, width_, height_};
-        SDL_RenderCopy(renderer, texture_, NULL, &buttonRect); // draw texture    
+        SDL_RenderCopy(renderer, unpressedButtonTexture_, NULL, &buttonRect);  
     }
 
     void handleEvent(const SDL_Event &event) override {
@@ -159,7 +172,6 @@ private:
     }
 
 };
-
 
 
 class MGCanvas : public MGWidget {
@@ -275,8 +287,12 @@ public:
         widgets_.push_back((MGWidget *) canvas);
     }
 
-    void addButton(const int x, const int y, const int width, const int height, const char *texturePath=NULL) {
-        MGButton *button = new MGButton({x, y}, std::min(width, viewport_.w - x), std::min(height, viewport_.h - y), {viewport_.x, viewport_.y}, texturePath);
+    void addButton(const int x, const int y, const int width, const int height, 
+                   const char *pressedButtonTexturePath=NULL, const char *unpressedButtonTexturePath=NULL
+    ) {    
+        MGButton *button = new MGButton({x, y}, std::min(width, viewport_.w - x), std::min(height, viewport_.h - y), {viewport_.x, viewport_.y},
+                                        pressedButtonTexturePath, unpressedButtonTexturePath);
+                                
         widgets_.push_back((MGWidget *) button);
     }
 };
