@@ -1,4 +1,4 @@
-#include "MGApplication.h"
+#include "MyGUI.h"
 
 const int MAIN_WINDOW_WIDTH = 800;
 const int MAIN_WINDOW_HEIGHT = 600;
