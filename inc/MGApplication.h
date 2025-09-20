@@ -346,7 +346,6 @@ friend class MGApplication;
     int width = 0;
 
     std::vector<MGWindow *> windows_;
-
 public:
     MGWindow *addWindow(const int x, const int y, const int width, const int height) {
         MGWindow *newWindow = new MGWindow(signalManager_, x, y, width, height);
@@ -354,7 +353,6 @@ public:
 
         return windows_.back();
     }
-
 private:
     MGMainWindow() {};
 
@@ -443,10 +441,12 @@ private:
 };
 
 class MGApplication {
-    MGMainWindow *mainWindow_ = nullptr;
-    const Uint32 frameDelay = 16;
     SignalManager signalManager;
 
+    MGMainWindow *mainWindow_ = nullptr;
+    
+    const Uint32 frameDelay = 16;
+    std::vector<std::function<void()>> userEvents_;
 public:
     MGApplication(): signalManager() {}
     
@@ -468,8 +468,32 @@ public:
         }
     }
 
-    MGMainWindow *mainWindow() { return mainWindow_; }
+    MGMainWindow *getMainWindow() { return mainWindow_; }
+    SignalManager *getSignalManager() { return &signalManager; }
 
+    void addEventToMainLoop(std::function<void()> userEvent) {
+        userEvents_.push_back(userEvent);
+    }
+
+    void run() {
+        bool running = true;
+        while (running) {
+            Uint32 frameStart =  SDL_GetTicks();
+
+            handleEvents(&running);
+            mainWindow_->update();
+            
+            for (auto userEvent : userEvents_) {
+                userEvent();
+            }
+            
+            mainWindow_->render();
+
+            Uint32 frameTime = SDL_GetTicks() - frameStart;
+            if (frameDelay > frameTime) SDL_Delay(frameDelay - frameTime);
+        }
+    }
+private:
     void handleEvents(bool *running) {
         assert(running);
     
@@ -484,19 +508,6 @@ public:
         }
     }
 
-    void run() {
-        bool running = true;
-        while (running) {
-            Uint32 frameStart =  SDL_GetTicks();
-        
-            handleEvents(&running);
-            mainWindow_->update();
-            mainWindow_->render();
-
-            Uint32 frameTime = SDL_GetTicks() - frameStart;
-            if (frameDelay > frameTime) SDL_Delay(frameDelay - frameTime);
-        }
-    }
 };
 
 
