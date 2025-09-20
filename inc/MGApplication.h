@@ -10,6 +10,7 @@
 #include <vector>
 #include <cassert>
 #include <functional>
+#include <unordered_map>
 
 
 inline bool isInsideRect(const SDL_Rect& rect, const int x, const int y) {
@@ -40,9 +41,27 @@ inline SDL_Texture* createTexture(const char *texturePath, SDL_Renderer* rendere
     return resultTexture; 
 }
 
+class SignalManager {
+friend class MGApplication;
+    std::unordered_map<std::string, std::vector<std::function<void()>>> signals;
+private:
+    SignalManager() = default;
+    ~SignalManager() = default;
+
+    void connect(const std::string &singnalString, std::function<void()> slotFunction) {
+        signals[singnalString].push_back(slotFunction);
+    }
+    
+    void emit(const std::string &singnalString) {
+        for (auto slotFunction : signals[singnalString]) {
+            slotFunction();
+        }
+    }
+};
+
 class MGWidget {
 friend class MGWindow;
-
+    SignalManager *signalManager_;
 protected:
     SDL_Rect viewport_ = {};
     SDL_Point inWindowPos_ = {};
@@ -55,8 +74,8 @@ protected:
         viewport_.y = inWindowPos_.y + newWindowOffset.y;
     }
 
-    MGWidget(const SDL_Point &inWindowPos, const int width, const int height, const SDL_Point &windowOffset): 
-        width_(width), height_(height), inWindowPos_(inWindowPos)
+    MGWidget(SignalManager *signalManager, const SDL_Point &inWindowPos, const int width, const int height, const SDL_Point &windowOffset): 
+        signalManager_(signalManager), width_(width), height_(height), inWindowPos_(inWindowPos)
     {
         viewport_ = {inWindowPos.x + windowOffset.x, inWindowPos.y + windowOffset.y, width, height};
     }
@@ -98,7 +117,6 @@ private:
     }
 };
 
-
 class MGButton : public MGWidget {
 friend class MGWindow;
     const char *pressedButtonTexturePath_;
@@ -112,11 +130,12 @@ friend class MGWindow;
     std::function<void()> onClick;
 
 private:
-    MGButton(const SDL_Point &inWindowPos, const int width, const int height, const SDL_Point &windowOffset, 
+    MGButton(SignalManager *signalManager, 
+             const SDL_Point &inWindowPos, const int width, const int height, const SDL_Point &windowOffset, 
              const char *pressedButtonTexturePath, const char *unpressedButtonTexturePath):
         pressedButtonTexturePath_(pressedButtonTexturePath),
         unpressedButtonTexturePath_(unpressedButtonTexturePath),
-        MGWidget(inWindowPos, width, height, windowOffset) {}
+        MGWidget(signalManager, inWindowPos, width, height, windowOffset) {}
 
     ~MGButton() override {
         if (pressedButtonTexture_) SDL_DestroyTexture(pressedButtonTexture_);
@@ -173,10 +192,8 @@ private:
 
 };
 
-
 class MGCanvas : public MGWidget {
 friend class MGWindow;
-
 private:
     void paintEvent(SDL_Renderer* renderer) override {
         SDL_Rect widgetRect = {0, 0, width_, height_};
@@ -187,13 +204,14 @@ private:
         SDL_RenderDrawLine(renderer, 0, 0, 1000, 1000);
     }
 
-    MGCanvas(const SDL_Point &inWindowPos, const int width, const int height, const SDL_Point &windowOffset):
-        MGWidget(inWindowPos, width, height, windowOffset) {}
+    MGCanvas(SignalManager *signalManager, const SDL_Point &inWindowPos, const int width, const int height, const SDL_Point &windowOffset):
+        MGWidget(signalManager, inWindowPos, width, height, windowOffset) {}
 };
-
 
 class MGWindow {
 friend class MGMainWindow;
+    SignalManager *signalManager_;
+
     SDL_Rect viewport_;
     int width_ = 0;
     int height_ = 0;
@@ -208,8 +226,8 @@ friend class MGMainWindow;
 
 private:
     MGWindow();
-    MGWindow(const int x, const int y, const int width, const int height):
-    width_(width), height_(height) 
+    MGWindow(SignalManager *signalManager, const int x, const int y, const int width, const int height):
+    width_(width), height_(height), signalManager_(signalManager)
     {
         viewport_ = {x, y, width, height};
     }
@@ -292,14 +310,15 @@ private:
 
 public:
     void addCanvas(const int x, const int y, const int width, const int height) {
-        MGCanvas *canvas = new MGCanvas({x, y}, std::min(width, viewport_.w - x), std::min(height, viewport_.h - y), {viewport_.x, viewport_.y});
+        MGCanvas *canvas = new MGCanvas(signalManager_, {x, y}, std::min(width, viewport_.w - x), std::min(height, viewport_.h - y), {viewport_.x, viewport_.y});
         widgets_.push_back((MGWidget *) canvas);
     }
 
     void addButton(const int x, const int y, const int width, const int height, 
                    const char *pressedButtonTexturePath=NULL, const char *unpressedButtonTexturePath=NULL
     ) {    
-        MGButton *button = new MGButton({x, y}, std::min(width, viewport_.w - x), std::min(height, viewport_.h - y), {viewport_.x, viewport_.y},
+        MGButton *button = new MGButton(signalManager_, 
+                                        {x, y}, std::min(width, viewport_.w - x), std::min(height, viewport_.h - y), {viewport_.x, viewport_.y},
                                         pressedButtonTexturePath, unpressedButtonTexturePath);
                                 
         widgets_.push_back((MGWidget *) button);
@@ -309,6 +328,7 @@ public:
 class MGMainWindow {
 friend class MGApplication;
 
+    SignalManager *signalManager_;
     SDL_Window* window_ = nullptr;
     SDL_Renderer *renderer_ = nullptr;
 
@@ -319,7 +339,7 @@ friend class MGApplication;
 
 public:
     MGWindow *addWindow(const int x, const int y, const int width, const int height) {
-        MGWindow *newWindow = new MGWindow(x, y, width, height);
+        MGWindow *newWindow = new MGWindow(signalManager_, x, y, width, height);
         windows_.push_back(newWindow);
 
         return windows_.back();
@@ -330,10 +350,12 @@ private:
 
     MGMainWindow
     (
+        SignalManager *signalManager,
         const char *windowTitle,
         const int width,
         const int height
-    ) {
+    ) : signalManager_(signalManager)
+    {
         this->width;
         this->height;
 
@@ -407,17 +429,16 @@ private:
 
         SDL_RenderPresent(renderer_);
     }
-   
-    
 };
+
 
 class MGApplication {
     MGMainWindow *mainWindow_ = nullptr;
     const Uint32 frameDelay = 16;
-    // SignalManager signalManager;
+    SignalManager signalManager;
 
 public:
-    MGApplication() = default;
+    MGApplication(): signalManager() {}
     
     ~MGApplication() {
         SDL_Quit();
@@ -431,7 +452,7 @@ public:
         if (SDL_Init(SDL_INIT_VIDEO) != 0) throw std::runtime_error(std::string("SDL_Init failed") + SDL_GetError());
     
         try {
-            if (!mainWindow_) mainWindow_ = new MGMainWindow(windowTitle, width, height);
+            if (!mainWindow_) mainWindow_ = new MGMainWindow(&signalManager, windowTitle, width, height);
         } catch (const std::exception& e) {
             throw std::runtime_error(std::string("setMainWindow failed"));
         }
