@@ -4,6 +4,11 @@ A minimal **Qt-style GUI framework** built on top of **SDL2**, featuring a **wid
 
 ---
 
+## HOW TO USE
+
+
+
+
 ## Features
 
 * **SDL2-based rendering** (single window, immediate mode).
