@@ -49,7 +49,7 @@ class MGWidget {
 friend class MGWindow;
 
 protected:
-    const SignalManager *signalManager_ = nullptr;
+    SignalManager *signalManager_ = nullptr;
     SDL_Rect viewport_ = {};
     SDL_Point inWindowPos_ = {};
 
@@ -199,7 +199,7 @@ private:
 class MGWindow {
 friend class MGMainWindow;
 
-    const SignalManager *signalManager_ = nullptr;
+    SignalManager *signalManager_ = nullptr;
 
     SDL_Rect viewport_ = {};
     int width_ = 0;
