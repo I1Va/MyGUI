@@ -206,13 +206,6 @@ private:
     }
 };
 
-// class MGCanvas : public MGWidget {
-// friend class MGWindow;
-// private:
-//     MGCanvas(SignalManager *signalManager, const SDL_Point &inWindowPos, const int width, const int height, const SDL_Point &windowOffset):
-//         MGWidget(signalManager, inWindowPos, width, height, windowOffset) {}
-// };
-
 class MGWindow {
 friend class MGMainWindow;
 
@@ -280,11 +273,12 @@ private:
     }
 
     void update() {
+        wasUpdated = false;
+    
         if (draggingState) {
             dragWindow();
             wasUpdated = true;
         }
-        
 
         for (auto widget : widgets_) {
             widget->update();
@@ -399,20 +393,20 @@ private:
             }
         }
     }
-    
-    void reorderWindows() {
-        int curWindowIdx = windows_.size() - 1;
-        while (curWindowIdx - 1 >= 0) {
-            MGWindow *leftWindow = windows_[curWindowIdx - 1];
-            MGWindow *rightWindow = windows_[curWindowIdx];
-            if (leftWindow->wasUpdated && !rightWindow->wasUpdated) {
-                std::swap(windows_[curWindowIdx - 1], windows_[curWindowIdx]);
-            }
-            curWindowIdx--;
-        }
 
-        for (auto window : windows_) {
-            window->wasUpdated = false;
+    void reorderWindows() {
+        int left = 0;
+        int right = (int)(windows_.size()) - 1;
+        while (right - left > 0) {
+            if (windows_[left]->wasUpdated && !windows_[right]->wasUpdated) {
+                std::swap(windows_[left], windows_[right]);
+            }
+            if (!windows_[left]->wasUpdated) {
+                left++;
+            }
+            if (windows_[right]->wasUpdated) {
+                right--;
+            }
         }
     }
 
