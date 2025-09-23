@@ -18,9 +18,35 @@ class MGWindow;
 class MGWidget;
 
 
+const double SEC_TO_MS = 1000;
+
 bool isInsideRect(const SDL_Rect& rect, const int x, const int y);
 bool isMouseEvent(const SDL_Event &event);
 SDL_Texture* createTexture(const char *texturePath, SDL_Renderer* renderer);
+
+
+class RendererGuard {
+    SDL_Renderer* renderer_;
+    Uint8 r_, g_, b_, a_;
+    SDL_BlendMode blend_;
+    SDL_Rect viewport_;
+    SDL_Rect clip_;
+
+public:
+    RendererGuard(SDL_Renderer* renderer) : renderer_(renderer) {
+        SDL_GetRenderDrawColor(renderer_, &r_, &g_, &b_, &a_);
+        SDL_GetRenderDrawBlendMode(renderer_, &blend_);
+        SDL_RenderGetViewport(renderer_, &viewport_);
+        SDL_RenderGetClipRect(renderer_, &clip_);
+    }
+
+    ~RendererGuard() {
+        SDL_SetRenderDrawColor(renderer_, r_, g_, b_, a_);
+        SDL_SetRenderDrawBlendMode(renderer_, blend_);
+        SDL_RenderSetViewport(renderer_, &viewport_);
+        SDL_RenderSetClipRect(renderer_, &clip_);
+    }
+};
 
 class SignalManager {
 friend class MGApplication;
@@ -80,29 +106,20 @@ private:
     virtual void update() {}
     void render(SDL_Renderer* renderer) {
         assert(renderer);
-        
-        SDL_Rect prevClip;
-        SDL_RenderGetClipRect(renderer, &prevClip);
-        SDL_Rect prevViewPort;
-        SDL_RenderGetViewport(renderer, &prevViewPort);
-        Uint8 prev_r, prev_g, prev_b, prev_a;
-        SDL_GetRenderDrawColor(renderer, &prev_r, &prev_g, &prev_b, &prev_a);
 
+        RendererGuard rendererGuard(renderer);
 
         SDL_Rect clipRect = {0, 0, viewport_.w, viewport_.h};
         SDL_RenderSetViewport(renderer, &viewport_);
         SDL_RenderSetClipRect(renderer, &clipRect);
 
         paintEvent(renderer);
-
-        SDL_RenderSetViewport(renderer, &prevViewPort);
-        SDL_RenderSetClipRect(renderer, &prevClip);
-        SDL_SetRenderDrawColor(renderer, prev_r, prev_g, prev_b, prev_a);
     }
 
-    void setSignalManager(const SignalManager *const signalManager) {
+    virtual void setSignalManager(SignalManager *const signalManager) {
         signalManager_ = signalManager;
     }
+
     void emitSignal(const std::string &singnalString) {
         signalManager_->emit(singnalString);
     }
@@ -214,7 +231,7 @@ friend class MGMainWindow;
 
 private:
     MGWindow();
-    MGWindow(const SignalManager *signalManager, const int x, const int y, const int width, const int height):
+    MGWindow(SignalManager *signalManager, const int x, const int y, const int width, const int height):
     width_(width), height_(height), signalManager_(signalManager)
     {
         viewport_ = {x, y, width, height};
@@ -277,13 +294,7 @@ private:
     void render(SDL_Renderer* renderer) {
         assert(renderer);
         
-        
-        SDL_Rect prevClip;
-        SDL_RenderGetClipRect(renderer, &prevClip);
-        SDL_Rect prevViewPort;
-        SDL_RenderGetViewport(renderer, &prevViewPort);
-        Uint8 prev_r, prev_g, prev_b, prev_a;
-        SDL_GetRenderDrawColor(renderer, &prev_r, &prev_g, &prev_b, &prev_a);
+        RendererGuard rendererGuard(renderer);
 
         SDL_Rect clipRect = {0, 0, viewport_.w, viewport_.h};
         SDL_RenderSetViewport(renderer, &viewport_);
@@ -296,17 +307,13 @@ private:
         for (auto widget : widgets_) {
             widget->render(renderer); // paint events
         }
-
-        SDL_RenderSetViewport(renderer, &prevViewPort);
-        SDL_RenderSetClipRect(renderer, &prevClip);
-        SDL_SetRenderDrawColor(renderer, prev_r, prev_g, prev_b, prev_a);
     }
 
 public:
     void addWidget(MGWidget *const widget, const SDL_Point &position) {
         assert(widget);
 
-        if (widget->parent_ != nullptr) {
+        if (widget->parent_ != this || widget->parent_ != this) {
             std::cerr << "Widget can't be added : parent parent already exists\n";
             return;
         }
@@ -435,7 +442,7 @@ class MGApplication {
     MGMainWindow *mainWindow_ = nullptr;
     
     const Uint32 frameDelay = 16;
-    std::vector<std::function<void()>> userEvents_;
+    std::vector<std::function<void(int)>> userEvents_;
 
 public:
     MGApplication(): signalManager() {}
@@ -461,7 +468,7 @@ public:
     MGMainWindow *getMainWindow() { return mainWindow_; }
     SignalManager *getSignalManager() { return &signalManager; }
 
-    void addEventToMainLoop(std::function<void()> userEvent) {
+    void addEventToMainLoop(std::function<void(int)> userEvent) {
         userEvents_.push_back(userEvent);
     }
 
@@ -474,7 +481,7 @@ public:
             mainWindow_->update();
             
             for (auto userEvent : userEvents_) {
-                userEvent();
+                userEvent(frameDelay);
             }
             
             mainWindow_->render();
