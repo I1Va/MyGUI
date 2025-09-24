@@ -91,9 +91,12 @@ private:
         viewport_.x = inWindowPos_.x + newWindowOffset.x;
         viewport_.y = inWindowPos_.y + newWindowOffset.y;
     }
-    void setPosition(const SDL_Point &windowOffset, const SDL_Point &inWindowPos) {
+    void setArea(const SDL_Point &inWindowPos, const SDL_Rect& windowViewPort) {
         inWindowPos_ = inWindowPos;
-        viewport_ = {inWindowPos.x + windowOffset.x, inWindowPos.y + windowOffset.y, width_, height_};
+        int clampedWidth = std::max(0, std::min(width_, windowViewPort.w - inWindowPos.x));
+        int clampedHeight = std::max(0, std::min(height_, windowViewPort.h - inWindowPos.y));
+
+        viewport_ = {inWindowPos.x + windowViewPort.x, inWindowPos.y + windowViewPort.y, clampedWidth, clampedHeight};
     }
 
     virtual void paintEvent(SDL_Renderer* renderer) {}
@@ -142,7 +145,7 @@ public:
     MGButton
     (
         const int width, const int height,
-        const char *pressedButtonTexturePath, const char *unpressedButtonTexturePath, 
+        const char *unpressedButtonTexturePath, const char *pressedButtonTexturePath,
         std::function<void()> onClickFunction=nullptr, const MGWindow *parent=nullptr
     ): 
         MGWidget(width, height, parent),  
@@ -314,7 +317,8 @@ public:
 
         widgets_.push_back((MGWidget *) widget);
         widgets_.back()->setSignalManager(signalManager_);
-        widgets_.back()->setPosition({viewport_.x, viewport_.y}, position);
+        
+        widgets_.back()->setArea(position, viewport_);
     }
 };
 
