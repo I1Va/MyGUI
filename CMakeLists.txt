@@ -15,4 +15,6 @@ target_include_directories(MyGUI
     PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/inc
 )
 
-target_link_libraries(MyGUI PRIVATE SDL2::SDL2 SDL2_image::SDL2_image)
+target_link_libraries(MyGUI 
+                      PRIVATE SDL2::SDL2 SDL2_image::SDL2_image
+                      PUBLIC geometry_module)
