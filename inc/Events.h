@@ -4,21 +4,18 @@
 #include <SDL2/SDL.h>
 
 
-class Event {
+struct Event {
 };
 
-class CordEvent {
-    Sint32 x_, y_;
-public:
-    CordEvent(Sint32 x, Sint32 y): x_(x), y_(y) {}
+struct CordEvent {
+    gm_dot<int, 2> pos;
+    CordEvent(int x, int y): pos(x, y) {}
     CordEvent() = default;    
 };
 
-class MouseButtonEvent : public CordEvent {
+struct MouseButtonEvent : public CordEvent {
     Uint8 button_;
-
-public:
-    MouseButtonEvent(Sint32 x, Sint32 y, Uint8 button): CordEvent(x, y), button_(button) {}
+    MouseButtonEvent(int x, int y, Uint8 button): CordEvent(x, y), button_(button) {}
     MouseButtonEvent() = default;
 };
 

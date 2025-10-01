@@ -1,8 +1,8 @@
-// #include "MyGUI.h"
+#include "MyGUI.h"
 
-// bool isInsideRect(const SDL_Rect& rect, const int x, const int y) {
-//     return x >= rect.x && x <= (rect.x + rect.w) && y >= rect.y && y <= rect.y + rect.h;
-// }
+bool isInsideRect(const Rect& rect, const int x, const int y) {
+    return x >= rect.x && x <= (rect.x + rect.w) && y >= rect.y && y <= rect.y + rect.h;
+}
 
 // bool isMouseEvent(const SDL_Event &event) {
 //     return  event.type == SDL_MOUSEMOTION ||
