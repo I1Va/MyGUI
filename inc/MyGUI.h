@@ -209,6 +209,26 @@ private:
     }
 };
 
+// class MGRecorder : public MGWidget {
+//     const MGWindow *parent_=nullptr;
+
+//     std::vector<double> values;
+//     double xScale;
+//     double yScale;
+
+//     std::function<void()> addRecordFunction= nullptr;
+    
+// public:
+//     MGRecorder()
+
+
+
+// };
+
+
+
+
+
 class MGWindow {
 friend class MGMainWindow;
 
