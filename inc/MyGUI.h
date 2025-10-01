@@ -70,6 +70,8 @@ public:
     Widget(int x, int y, int width, int height, const Widget *parent=nullptr): 
         parent_(parent), rect_({x, y, width, height}) {}
     
+    void setParent(const Widget *parent) { parent_ = parent; } 
+    const Widget *parent() const { return parent_; }
     const SDL_Texture* texture() const { return texture_; }
     Rect rect() const { return rect_; }
 
@@ -143,9 +145,12 @@ public:
     }
 
     void addWdiget(Widget *widget) {
-        if (widget->parent_ == this)
+        if (widget->parent() == this || widget->parent() == nullptr) {
+            widget->setParent(this);
             children_.push_back(widget); 
-        else std::cerr << "addWdiget failed : parent does not match\n";
+        } else {
+            std::cerr << "addWdiget failed : parent does not match\n";
+        }
     }
 };
 
@@ -193,8 +198,18 @@ private:
 public:
     explicit UIManager(Uint32 frameDelay): frameDelay_(frameDelay) {}
 
-    SDL_Renderer* renderer() { return renderer_; }
+    void setMainWidget(Widget *mainWidget) {
+        if (wTreeRoot_ != nullptr) {
+            std::cerr << "setMainWidget failed : wTreeRoot != nullptr\n";
+            return;
+        }
+    
+        wTreeRoot_ = mainWidget;
+    }
 
+
+    SDL_Renderer* renderer() { return renderer_; }
+    
     void run() {
         bool running = true;
         while (running) {
