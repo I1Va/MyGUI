@@ -202,16 +202,16 @@ bool Widget::render(SDL_Renderer* renderer) {
     return true;
 }
 
-void Widget::update() {}
+bool Widget::update() { return false; }
 
 bool Widget::onMouseDown(const MouseButtonEvent &event) {
-    return true;
+    return false;
 }
 bool Widget::onMouseUp(const MouseButtonEvent &event) {
-    return true;
+    return false;
 }
 bool Widget::onMouseMove(const MouseMoveEvent &event) {
-    return true;
+    return false;
 }
 
 Rect Widget::rect() const { return rect_; }
@@ -230,76 +230,104 @@ Container::~Container() {
 }
 
 bool Container::onMouseDown(const MouseButtonEvent &event) {
-    if (!isInsideRect(rect_, event.pos.x, event.pos.y)) return true; 
+    if (!isInsideRect(rect_, event.pos.x, event.pos.y)) return false; 
 
     for (Widget *child : children_) {
         MouseButtonEvent childLocal = event;
 
         childLocal.pos.x -= child->rect().x;
         childLocal.pos.y -= child->rect().y;
-        if (!child->onMouseDown(childLocal)) {
-            return false; // stop propagation
+        if (child->onMouseDown(childLocal)) {
+            return true; // stop propagation
         }
     }
 
-    return true; // propagate
+    return false; // propagate
 }
 
 bool Container::onMouseUp(const MouseButtonEvent &event) {
-    if (!isInsideRect(rect_, event.pos.x, event.pos.y)) return true;
+    if (!isInsideRect(rect_, event.pos.x, event.pos.y)) return false;
 
     for (Widget *child : children_) {
         MouseButtonEvent childLocal = event;
         childLocal.pos.x -= child->rect().x;
         childLocal.pos.y -= child->rect().y;
-        if (!child->onMouseUp(childLocal)) {
-            return false;
+        if (child->onMouseUp(childLocal)) {
+            return true;
         }
     }
 
-    return true;
+    return false;
 }
 
 bool Container::onMouseMove(const MouseMoveEvent &event) {
-    if (!isInsideRect(rect_, event.pos.x, event.pos.y)) {
-        return true;
-    }
-
+    if (!isInsideRect(rect_, event.pos.x, event.pos.y)) return false;
+    
     for (Widget *child : children_) {
         MouseMoveEvent childLocal = event;
         childLocal.pos.x -= rect_.x;
         childLocal.pos.y -= rect_.y;
-        if (!child->onMouseMove(childLocal)) {
-            return false;
+        
+        if (child->onMouseMove(childLocal)) {
+            return true;
         }
     }
 
-    
-    if (event.button_ == SDL_BUTTON_LEFT) {
+    if (event.button_ == SDL_BUTTON_LEFT) { // FIXME
         accumulatedRel_ += event.rel;
         replaced_ = true;
-        return false;
+        return true;
     }
     
-    return true;
+    return false;
 }
 
-void Container::update() {
+void reorderWidgets(std::vector<std::pair<bool, Widget *>> &reorderingBufer) {
+    int left = 0;
+    int right = (int)(reorderingBufer.size()) - 1;
+    while (right - left > 0) {
+        if (!reorderingBufer[left].first && reorderingBufer[right].first) {
+            std::swap(reorderingBufer[left], reorderingBufer[right]);
+        }
+        if (reorderingBufer[left].first) {
+            left++;
+        }
+        if (!reorderingBufer[right].first) {
+            right--;
+        }
+    }
+}
+
+bool Container::update() {
+    bool updated = false;
     if (replaced_) {
         rect_.x += accumulatedRel_.x;
         rect_.y += accumulatedRel_.y;
         accumulatedRel_ = {0, 0};
         replaced_ = false;
-        if (parent_) {
-            parent_->invalidate();
-        }
+        updated = true;
+        if (parent_) parent_->invalidate();
     }
 
-    for (Widget *child : children_) child->update();
+    std::vector<std::pair<bool, Widget *>> reorderingBufer(children_.size());
+
+    for (size_t i = 0; i < children_.size(); i++) {
+        Widget *child = children_[i];
+        bool childUpdated = child->update();
+        reorderingBufer[i] = {childUpdated, child};
+        updated |= childUpdated;
+    }
+
+    reorderWidgets(reorderingBufer);
+    for (size_t i = 0; i < children_.size(); i++) {
+        children_[i] = reorderingBufer[i].second;
+    }
 
     if (parent_ && needRerender_) {
         parent_->invalidate();
     }
+
+    return updated;
 }
 
 bool Container::render(SDL_Renderer* renderer) {
@@ -327,13 +355,19 @@ bool Container::render(SDL_Renderer* renderer) {
     
     SDL_Rect clip = { 0, 0, rect_.w, rect_.h };
     SDL_RenderSetClipRect(renderer, &clip);
+
     // render children into the texture; children should produce their own texture
-    for (Widget *child : children_) {
+    for (auto it = children_.rbegin(); it != children_.rend(); ++it) {
+        Widget *child = *it;
         child->render(renderer);
         if (child->texture()) {
             SDL_Rect chldRect = child->rect();
             SDL_RenderCopy(renderer, child->texture(), NULL, &chldRect);
         }
+    }
+
+    for (Widget *child : children_) {
+        
     }
 
     needRerender_ = false;  

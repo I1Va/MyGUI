@@ -75,7 +75,7 @@ public:
 
     virtual void paintEvent(SDL_Renderer* renderer);
     virtual bool render(SDL_Renderer* renderer);
-    virtual void update();
+    virtual bool update();
 
     // Events: return false to stop propagation (CONSUME), true to continue (PROPAGATE)
     virtual bool onMouseDown(const MouseButtonEvent &event);
@@ -110,7 +110,7 @@ public:
     bool onMouseMove(const MouseMoveEvent &event) override;
 
     // Stages
-    void update() override;
+    bool update() override;
     bool render(SDL_Renderer* renderer) override;
 
     // User API
