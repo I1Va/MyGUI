@@ -34,7 +34,10 @@ struct Rect : public SDL_Rect {
 bool isInsideRect(const Rect& rect, const int x, const int y);
 
 struct UIManagerglobalState {
-    Widget *target = nullptr;
+    int hoveredGlobalZindex = 0;
+    const Widget *hovered = nullptr;
+    int mouseActivedGlobalZindex = 0;
+    const Widget *mouseActived = nullptr;
 };
 
 class UIManager {
@@ -46,6 +49,8 @@ class UIManager {
     SDL_Window *mainWindow_ = nullptr;
 
 private:
+    void globalStateOnMouseMove(const Widget *wgt, const MouseMotionEvent &event);
+    void globalStateOnMouseDown(const Widget *wgt, const MouseButtonEvent &event);
     void handleSDLEvents(bool *running);
 
 public: // user API
@@ -54,6 +59,8 @@ public: // user API
 
     void setMainWidget(Widget *mainWidget);
     void run();
+    const Widget *hovered() const { return glState_.hovered; }
+    const Widget *mouseActived() const { return glState_.mouseActived; }
 
 friend class Widget;
 };
@@ -82,22 +89,23 @@ public:
     // propagation logic
     virtual bool onMouseDown(const MouseButtonEvent &event);
     virtual bool onMouseUp(const MouseButtonEvent &event);
-    virtual bool onMouseMove(const MouseMoveEvent &event);
+    virtual bool onMouseMove(const MouseMotionEvent &event);
 
     // event self processing logic
     virtual bool onMouseDownSelfAction(const MouseButtonEvent &event);
     virtual bool onMouseUpSelfAction(const MouseButtonEvent &event);
-    virtual bool onMouseMoveSelfAction(const MouseMoveEvent &event);
+    virtual bool onMouseMoveSelfAction(const MouseMotionEvent &event);
 
     // Getters / Setters
+    virtual const std::vector<Widget *> &getChildren() const;
     void invalidate() { needRerender_ = true; }
     bool needRerender() const { return needRerender_; }
     Rect rect() const;
-    Widget *parent() const;
-    void setParent(Widget *parent);
+    const Widget *parent() const;
     SDL_Texture* texture();
 
 friend class UIManager;
+friend class Container;
 };
 
 class Container : public Widget {
@@ -111,14 +119,17 @@ public:
     // Events
     bool onMouseDown(const MouseButtonEvent &event) override;
     bool onMouseUp(const MouseButtonEvent &event) override;
-    bool onMouseMove(const MouseMoveEvent &event) override;
+    bool onMouseMove(const MouseMotionEvent &event) override;
 
     // Stages
     bool update() override;
     bool render(SDL_Renderer* renderer) override;
 
+    // Getters / setters
+    const std::vector<Widget *> &getChildren() const override;
+
     // User API
-    void addWdiget(Widget *widget);
+    void addWidget(Widget *widget);
 };
 
 class Window : public Container {
@@ -128,26 +139,24 @@ protected:
 public:
     Window(int x, int y, int w, int h) : Container(x, y, w, h) {}    
 
-    void renderSelfAction(SDL_Renderer* renderer) override;
-
-    bool onMouseMoveSelfAction(const MouseMoveEvent &event) override;
+    
+    bool onMouseMoveSelfAction(const MouseMotionEvent &event) override;
     bool updateSelfAction() override;
 };
 
-class Button : public Widget {
+// class Button : public Widget {
     
-public:
-    Button(int x, int y, int w, int h) : Widget(x, y, w, h) {}    
+// public:
+//     Button(int x, int y, int w, int h) : Widget(x, y, w, h) {}    
 
+//     void renderSelfAction(SDL_Renderer* renderer) {
+//         assert(renderer);
 
-    void renderSelfAction(SDL_Renderer* renderer) {
-        assert(renderer);
-
-        SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255); 
-        SDL_Rect full = {0, 0, rect_.w, rect_.h};
-        SDL_RenderFillRect(renderer, &full);
-    }
-};
+//         SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255); 
+//         SDL_Rect full = {0, 0, rect_.w, rect_.h};
+//         SDL_RenderFillRect(renderer, &full);
+//     }
+// };
 
 
 #endif // MyGUI_H

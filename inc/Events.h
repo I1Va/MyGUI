@@ -14,15 +14,15 @@ struct CordEvent {
 };
 
 struct MouseButtonEvent : public CordEvent {
-    Uint8 button_;
-    MouseButtonEvent(int x, int y, Uint8 button): CordEvent(x, y), button_(button) {}
+    Uint8 button;
+    MouseButtonEvent(int x, int y, Uint8 button): CordEvent(x, y), button(button) {}
     MouseButtonEvent() = default;
 };
 
-struct MouseMoveEvent : public MouseButtonEvent {
+struct MouseMotionEvent : public MouseButtonEvent {
     gm_dot<int, 2> rel;
-    MouseMoveEvent(int x, int y,  Uint8 button, int relX, int relY): MouseButtonEvent(x, y, button), rel(relX, relY) {}
-    MouseMoveEvent() = default;
+    MouseMotionEvent(int x, int y,  Uint8 button, int relX, int relY): MouseButtonEvent(x, y, button), rel(relX, relY) {}
+    MouseMotionEvent() = default;
 };
 
 

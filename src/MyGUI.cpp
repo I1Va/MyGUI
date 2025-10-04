@@ -36,7 +36,6 @@ RendererGuard::~RendererGuard() {
         SDL_RenderSetClipRect(renderer_, nullptr);
 }
 
-
 // ---------------- Rect / util ----------------
 
 Rect::Rect(int x, int y, int w, int h) {
@@ -50,8 +49,15 @@ gm_dot<int, 2> Rect::pos() const {
     return { x, y };
 }
 
-bool isInsideRect(const Rect& rect, const int x, const int y) {
+inline bool isInsideRect(const Rect& rect, const int x, const int y) {
     return (x >= rect.x) && (x < rect.x + rect.w) && (y >= rect.y) && (y < rect.y + rect.h);
+}
+
+inline bool isMouseSDLevent(const SDL_Event &event) {
+    return 
+        event.type == SDL_MOUSEMOTION       || 
+        event.type == SDL_MOUSEBUTTONDOWN   ||
+        event.type == SDL_MOUSEBUTTONUP     ;
 }
 
 // ---------------- UIManager ----------------
@@ -91,31 +97,75 @@ void UIManager::setMainWidget(Widget *mainWidget) {
     }
 
     wTreeRoot_ = mainWidget;
+    wTreeRoot_->UIManager_ = this;
+}
+
+
+
+void UIManager::globalStateOnMouseMove(const Widget *wgt, const MouseMotionEvent &event) {
+    if (!isInsideRect(wgt->rect(), event.pos.x, event.pos.y)) return;
+    
+    if (event.button == SDL_BUTTON_LEFT) glState_.hovered = wgt;
+    
+    for (auto it = wgt->getChildren().rbegin(); it != wgt->getChildren().rend(); ++it) {
+        MouseMotionEvent childLocal = event;
+        childLocal.pos.x -= wgt->rect().x;
+        childLocal.pos.y -= wgt->rect().y;
+
+        globalStateOnMouseMove(*it, childLocal);
+    }
+}
+
+void UIManager::globalStateOnMouseDown(const Widget *wgt, const MouseButtonEvent &event) {
+    if (!isInsideRect(wgt->rect(), event.pos.x, event.pos.y)) return;
+    
+    if (event.button == SDL_BUTTON_LEFT) glState_.mouseActived = wgt;
+    
+    for (auto it = wgt->getChildren().rbegin(); it != wgt->getChildren().rend(); ++it) {
+        MouseButtonEvent childLocal = event;
+        childLocal.pos.x -= wgt->rect().x;
+        childLocal.pos.y -= wgt->rect().y;
+
+        globalStateOnMouseDown(*it, childLocal);
+    }
 }
 
 void UIManager::handleSDLEvents(bool *running) {
+   
     static gm_dot<int, 2> prevMousePos = {0, 0};
     gm_dot<int, 2> curMousePos = {0, 0};
 
-    SDL_Event SDLEvent;
-
+    SDL_Event SDLEvent = {};
+    MouseButtonEvent mouseButtonEvent = {};
+    MouseMotionEvent mouseMotionEvent = {};
+    
     while (SDL_PollEvent(&SDLEvent)) {
         if (SDLEvent.type == SDL_QUIT || SDLEvent.type == SDL_KEYDOWN && SDLEvent.key.keysym.sym == SDLK_ESCAPE) {
             *running = false;
             break;
         }
 
+       
         switch (SDLEvent.type) {
             case SDL_MOUSEMOTION:
                 SDL_GetMouseState(&curMousePos.x, &curMousePos.y);
-                wTreeRoot_->onMouseMove({curMousePos.x, curMousePos.y, SDLEvent.button.button, 
-                                        curMousePos.x - prevMousePos.x, curMousePos.y - prevMousePos.y});
+                mouseMotionEvent = MouseMotionEvent(curMousePos.x, curMousePos.y, SDLEvent.button.button, 
+                                    curMousePos.x - prevMousePos.x, curMousePos.y - prevMousePos.y);
+
+                globalStateOnMouseMove(wTreeRoot_, mouseMotionEvent);
+                wTreeRoot_->onMouseMove(mouseMotionEvent);
                 break;
             case SDL_MOUSEBUTTONDOWN:
-                wTreeRoot_->onMouseDown({SDLEvent.button.x, SDLEvent.button.y, SDLEvent.button.button});
+                mouseButtonEvent = MouseButtonEvent(SDLEvent.button.x, SDLEvent.button.y, SDLEvent.button.button);
+                    
+                globalStateOnMouseDown(wTreeRoot_, mouseButtonEvent);
+                wTreeRoot_->onMouseDown(mouseButtonEvent);
+                
                 break;
             case SDL_MOUSEBUTTONUP:
-                wTreeRoot_->onMouseUp({SDLEvent.button.x, SDLEvent.button.y, SDLEvent.button.button});
+                mouseButtonEvent = MouseButtonEvent(SDLEvent.button.x, SDLEvent.button.y, SDLEvent.button.button);
+
+                wTreeRoot_->onMouseUp(mouseButtonEvent);
                 break;
             
             default:
@@ -210,23 +260,27 @@ bool Widget::onMouseDown(const MouseButtonEvent &event) {
 bool Widget::onMouseUp(const MouseButtonEvent &event) {
     return onMouseUpSelfAction(event);
 }
-bool Widget::onMouseMove(const MouseMoveEvent &event) {
+bool Widget::onMouseMove(const MouseMotionEvent &event) {
     return onMouseMoveSelfAction(event);
 }
 
 bool Widget::onMouseDownSelfAction(const MouseButtonEvent &event) {
-    return false;
+    return true;
 }
 bool Widget::onMouseUpSelfAction(const MouseButtonEvent &event) {
-    return false;
+    return true;
 }
-bool Widget::onMouseMoveSelfAction(const MouseMoveEvent &event) {
-    return false;
+bool Widget::onMouseMoveSelfAction(const MouseMotionEvent &event) {
+    return true;
+}
+
+const std::vector<Widget *> &Widget::getChildren() const {
+    static const std::vector<Widget*> empty;
+    return empty;
 }
 
 Rect Widget::rect() const { return rect_; }
-Widget *Widget::parent() const { return parent_; }
-void Widget::setParent(Widget *parent) { parent_ = parent; }
+const Widget *Widget::parent() const { return parent_; }
 SDL_Texture* Widget::texture() { return texture_; }
 
 // ---------------- Container ----------------
@@ -275,11 +329,11 @@ bool Container::onMouseUp(const MouseButtonEvent &event) {
     return false;
 }
 
-bool Container::onMouseMove(const MouseMoveEvent &event) {
+bool Container::onMouseMove(const MouseMotionEvent &event) {
     if (!isInsideRect(rect_, event.pos.x, event.pos.y)) return false;
     
     for (Widget *child : children_) {
-        MouseMoveEvent childLocal = event;
+        MouseMotionEvent childLocal = event;
         childLocal.pos.x -= rect_.x;
         childLocal.pos.y -= rect_.y;
 
@@ -365,30 +419,42 @@ bool Container::render(SDL_Renderer* renderer) {
     return true;
 }
 
-void Container::addWdiget(Widget *widget) {
+const std::vector<Widget *> &Container::getChildren() const {
+    return children_;
+}
+
+void Container::addWidget(Widget *widget) {
+    assert(widget);
+
+    if (UIManager_ == nullptr) {
+        std::cerr << "addWidget failed : Container doesn't linked to UIManager\n";
+        return;
+    }
+
     if (widget->parent() == this || widget->parent() == nullptr) {
-        widget->setParent(this);
+        widget->parent_ = this;
+        widget->UIManager_ = UIManager_;
         children_.push_back(widget);
     } else {
-        std::cerr << "addWdiget failed : parent does not match\n";
+        std::cerr << "addWidget failed : parent does not match\n";
+        return;
     }
 }
 
 // ---------------- Window ----------------
 
-void Window::renderSelfAction(SDL_Renderer* renderer) {
-    assert(renderer);
-
-    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255); 
-    SDL_Rect full = {0, 0, rect_.w, rect_.h};
-    SDL_RenderFillRect(renderer, &full);
-}
-
-bool Window::onMouseMoveSelfAction(const MouseMoveEvent &event) {
-    if (event.button_ == SDL_BUTTON_LEFT) { // FIXME
+bool Window::onMouseMoveSelfAction(const MouseMotionEvent &event) {
+    
+    if (this == UIManager_->mouseActived() && event.button == SDL_BUTTON_LEFT) {
         accumulatedRel_ += event.rel;
         replaced_ = true;
         return true;
+    } else {
+        if  (UIManager_->mouseActived() == nullptr) {
+            std::cout << "mouseActived null : " << (UIManager_->mouseActived() == nullptr) << " " << (event.button == SDL_BUTTON_LEFT) << "\n";
+        } else {
+            std::cout << "mouseActived : " << (UIManager_->mouseActived()->rect().w) << "\n";
+        }
     }
     
     return false;
