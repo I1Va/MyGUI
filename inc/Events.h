@@ -19,5 +19,11 @@ struct MouseButtonEvent : public CordEvent {
     MouseButtonEvent() = default;
 };
 
+struct MouseMoveEvent : public MouseButtonEvent {
+    gm_dot<int, 2> rel;
+    MouseMoveEvent(int x, int y,  Uint8 button, int relX, int relY): MouseButtonEvent(x, y, button), rel(relX, relY) {}
+    MouseMoveEvent() = default;
+};
+
 
 #endif // EVENTS_H

@@ -94,24 +94,34 @@ void UIManager::setMainWidget(Widget *mainWidget) {
 }
 
 void UIManager::handleSDLEvents(bool *running) {
+    static gm_dot<int, 2> prevMousePos = {0, 0};
+    gm_dot<int, 2> curMousePos = {0, 0};
+
     SDL_Event SDLEvent;
 
-        while (SDL_PollEvent(&SDLEvent)) {
+    while (SDL_PollEvent(&SDLEvent)) {
         if (SDLEvent.type == SDL_QUIT || SDLEvent.type == SDL_KEYDOWN && SDLEvent.key.keysym.sym == SDLK_ESCAPE) {
             *running = false;
             break;
         }
-        
+
         switch (SDLEvent.type) {
-        case SDL_MOUSEBUTTONDOWN:
-            wTreeRoot_->onMouseDown({SDLEvent.button.x, SDLEvent.button.y, SDLEvent.button.button});
-            break;
-        case SDL_MOUSEBUTTONUP:
-            wTreeRoot_->onMouseUp({SDLEvent.button.x, SDLEvent.button.y, SDLEvent.button.button});
-            break;
-        default:
-            break;
+            case SDL_MOUSEMOTION:
+                SDL_GetMouseState(&curMousePos.x, &curMousePos.y);
+                wTreeRoot_->onMouseMove({curMousePos.x, curMousePos.y, SDLEvent.button.button, 
+                                        curMousePos.x - prevMousePos.x, curMousePos.y - prevMousePos.y});
+                break;
+            case SDL_MOUSEBUTTONDOWN:
+                wTreeRoot_->onMouseDown({SDLEvent.button.x, SDLEvent.button.y, SDLEvent.button.button});
+                break;
+            case SDL_MOUSEBUTTONUP:
+                wTreeRoot_->onMouseUp({SDLEvent.button.x, SDLEvent.button.y, SDLEvent.button.button});
+                break;
+            
+            default:
+                break;
         }
+        SDL_GetMouseState(&prevMousePos.x, &prevMousePos.y);
     }
 }
 
@@ -136,7 +146,6 @@ void UIManager::run() {
         if (wTreeRoot_) {
             wTreeRoot_->render(renderer_);
             assert(wTreeRoot_->texture());
-
             SDL_Rect dst = wTreeRoot_->rect();
             SDL_RenderCopy(renderer_, wTreeRoot_->texture(), NULL, &dst);
         }
@@ -144,14 +153,14 @@ void UIManager::run() {
         SDL_RenderPresent(renderer_);
 
         // frame pacing
-        Uint32 frameTime = SDL_GetTicks() - frameStart;
-        if (frameDelay_ > frameTime) SDL_Delay(frameDelay_ - frameTime);
+        // Uint32 frameTime = SDL_GetTicks() - frameStart;
+        // if (frameDelay_ > frameTime) SDL_Delay(frameDelay_ - frameTime);
     }
 }
 
 // ---------------- Widget ----------------
 
-Widget::Widget(int x, int y, int width, int height, const Widget *parent)
+Widget::Widget(int x, int y, int width, int height, Widget *parent)
     : parent_(parent), rect_(x, y, width, height)
 {}
 
@@ -170,8 +179,8 @@ void Widget::paintEvent(SDL_Renderer* renderer) {
     SDL_RenderFillRect(renderer, &full);
 }
 
-void Widget::render(SDL_Renderer* renderer) {
-    if (!needsReRender_) return;
+bool Widget::render(SDL_Renderer* renderer) {
+    if (!needRerender_) return false;
 
     RendererGuard RendererGuard(renderer);
 
@@ -188,28 +197,31 @@ void Widget::render(SDL_Renderer* renderer) {
 
     paintEvent(renderer);
 
-    needsReRender_ = false;
-}
+    needRerender_ = false;
 
-void Widget::update() {
-    // default: do nothing
-}
-
-bool Widget::onMouseDown(const MouseButtonEvent & /*event*/) {
     return true;
 }
-bool Widget::onMouseUp(const MouseButtonEvent & /*event*/) {
+
+void Widget::update() {}
+
+bool Widget::onMouseDown(const MouseButtonEvent &event) {
+    return true;
+}
+bool Widget::onMouseUp(const MouseButtonEvent &event) {
+    return true;
+}
+bool Widget::onMouseMove(const MouseMoveEvent &event) {
     return true;
 }
 
 Rect Widget::rect() const { return rect_; }
-const Widget *Widget::parent() const { return parent_; }
-void Widget::setParent(const Widget *parent) { parent_ = parent; }
+Widget *Widget::parent() const { return parent_; }
+void Widget::setParent(Widget *parent) { parent_ = parent; }
 SDL_Texture* Widget::texture() { return texture_; }
 
 // ---------------- Container ----------------
 
-Container::Container(int x, int y, int width, int height, const Widget *parent)
+Container::Container(int x, int y, int width, int height, Widget *parent)
     : Widget(x, y, width, height, parent) {}
 
 Container::~Container() {
@@ -248,19 +260,57 @@ bool Container::onMouseUp(const MouseButtonEvent &event) {
     return true;
 }
 
-void Container::update() {
-    for (Widget *child : children_) child->update();
-}
-
-void Container::render(SDL_Renderer* renderer) {
-    assert(renderer);
-
-    bool needsReRender = needsReRender_;
+bool Container::onMouseMove(const MouseMoveEvent &event) {
+    if (!isInsideRect(rect_, event.pos.x, event.pos.y)) {
+        return true;
+    }
 
     for (Widget *child : children_) {
-        needsReRender |= child->needsReRender();
+        MouseMoveEvent childLocal = event;
+        childLocal.pos.x -= rect_.x;
+        childLocal.pos.y -= rect_.y;
+        if (!child->onMouseMove(childLocal)) {
+            return false;
+        }
     }
-    if (!needsReRender) return;
+
+    
+    if (event.button_ == SDL_BUTTON_LEFT) {
+        accumulatedRel_ += event.rel;
+        replaced_ = true;
+        return false;
+    }
+    
+    return true;
+}
+
+void Container::update() {
+    if (replaced_) {
+        rect_.x += accumulatedRel_.x;
+        rect_.y += accumulatedRel_.y;
+        accumulatedRel_ = {0, 0};
+        replaced_ = false;
+        if (parent_) {
+            parent_->invalidate();
+        }
+    }
+
+    for (Widget *child : children_) child->update();
+
+    if (parent_ && needRerender_) {
+        parent_->invalidate();
+    }
+}
+
+bool Container::render(SDL_Renderer* renderer) {
+    assert(renderer);
+
+    bool needsReRender = needRerender_;
+
+    for (Widget *child : children_) {
+        needsReRender |= child->needRerender();
+    }
+    if (!needsReRender) return false;
 
     RendererGuard rendererGuard(renderer);
 
@@ -286,7 +336,9 @@ void Container::render(SDL_Renderer* renderer) {
         }
     }
 
-    needsReRender_ = false;   
+    needRerender_ = false;  
+
+    return true;
 }
 
 void Container::addWdiget(Widget *widget) {
@@ -298,6 +350,7 @@ void Container::addWdiget(Widget *widget) {
     }
 }
 
+// ---------------- Window ----------------
 
 
 // bool isMouseEvent(const SDL_Event &event) {

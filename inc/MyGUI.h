@@ -61,54 +61,66 @@ friend class Widget;
 class Widget {
 protected:
     UIManager *UIManager_ = nullptr;
-    const Widget *parent_ = nullptr;
+    Widget *parent_ = nullptr;
 
     Rect rect_;
     SDL_Texture* texture_ = nullptr;
 
-    bool needsReRender_ = true;
+    bool needRerender_ = true;
 
 public:
-    Widget(int x, int y, int width, int height, const Widget *parent = nullptr);
+    Widget(int x, int y, int width, int height, Widget *parent = nullptr);
     virtual ~Widget();
 
 
     virtual void paintEvent(SDL_Renderer* renderer);
-    virtual void render(SDL_Renderer* renderer);
+    virtual bool render(SDL_Renderer* renderer);
     virtual void update();
 
     // Events: return false to stop propagation (CONSUME), true to continue (PROPAGATE)
     virtual bool onMouseDown(const MouseButtonEvent &event);
     virtual bool onMouseUp(const MouseButtonEvent &event);
+    virtual bool onMouseMove(const MouseMoveEvent &event);
 
     // Getters / Setters
-    bool needsReRender() const { return needsReRender_; }
+    void invalidate() { needRerender_ = true; }
+    bool needRerender() const { return needRerender_; }
     Rect rect() const;
-    const Widget *parent() const;
-    void setParent(const Widget *parent);
+    Widget *parent() const;
+    void setParent(Widget *parent);
     SDL_Texture* texture();
 
 friend class UIManager;
 };
 
 class Container : public Widget {
+protected:
     std::vector<Widget *> children_;
 
+    gm_dot<int, 2> accumulatedRel_ = {0, 0};
+    bool replaced_ = false;
+     
 public:
-    Container(int x, int y, int width, int height, const Widget *parent = nullptr);
+    Container(int x, int y, int width, int height, Widget *parent = nullptr);
     ~Container();
 
     // Events
     bool onMouseDown(const MouseButtonEvent &event) override;
     bool onMouseUp(const MouseButtonEvent &event) override;
+    bool onMouseMove(const MouseMoveEvent &event) override;
 
     // Stages
     void update() override;
-    void render(SDL_Renderer* renderer) override;
+    bool render(SDL_Renderer* renderer) override;
 
     // User API
     void addWdiget(Widget *widget);
 };
 
+// class Window : public Container {
+// public:
+//     Window(int x, int y, int w, int h);
+//     bool onMouseMove(const MouseMoveEvent &event) override;
+// };
 
 #endif // MyGUI_H
