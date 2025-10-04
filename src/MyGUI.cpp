@@ -171,7 +171,7 @@ Widget::~Widget() {
     }
 }
 
-void Widget::paintEvent(SDL_Renderer* renderer) {
+void Widget::renderSelfAction(SDL_Renderer* renderer) {
     assert(renderer);
 
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255); // white
@@ -191,26 +191,36 @@ bool Widget::render(SDL_Renderer* renderer) {
                                  SDL_TEXTUREACCESS_TARGET,
                                  rect_.w, rect_.h);
 
-
     SDL_SetRenderTarget(renderer, texture_);
     SDL_RenderClear(renderer);
 
-    paintEvent(renderer);
+    renderSelfAction(renderer);
 
     needRerender_ = false;
 
     return true;
 }
 
-bool Widget::update() { return false; }
+bool Widget::updateSelfAction() { return false; }
+bool Widget::update() { return updateSelfAction(); }
 
 bool Widget::onMouseDown(const MouseButtonEvent &event) {
-    return false;
+    return onMouseDownSelfAction(event);
 }
 bool Widget::onMouseUp(const MouseButtonEvent &event) {
-    return false;
+    return onMouseUpSelfAction(event);
 }
 bool Widget::onMouseMove(const MouseMoveEvent &event) {
+    return onMouseMoveSelfAction(event);
+}
+
+bool Widget::onMouseDownSelfAction(const MouseButtonEvent &event) {
+    return false;
+}
+bool Widget::onMouseUpSelfAction(const MouseButtonEvent &event) {
+    return false;
+}
+bool Widget::onMouseMoveSelfAction(const MouseMoveEvent &event) {
     return false;
 }
 
@@ -229,6 +239,7 @@ Container::~Container() {
     children_.clear();
 }
 
+
 bool Container::onMouseDown(const MouseButtonEvent &event) {
     if (!isInsideRect(rect_, event.pos.x, event.pos.y)) return false; 
 
@@ -237,10 +248,12 @@ bool Container::onMouseDown(const MouseButtonEvent &event) {
 
         childLocal.pos.x -= child->rect().x;
         childLocal.pos.y -= child->rect().y;
-        if (child->onMouseDown(childLocal)) {
+        if (child->onMouseDownSelfAction(childLocal)) {
             return true; // stop propagation
         }
     }
+
+    if (onMouseDownSelfAction(event)) return true;
 
     return false; // propagate
 }
@@ -252,10 +265,12 @@ bool Container::onMouseUp(const MouseButtonEvent &event) {
         MouseButtonEvent childLocal = event;
         childLocal.pos.x -= child->rect().x;
         childLocal.pos.y -= child->rect().y;
-        if (child->onMouseUp(childLocal)) {
+        if (child->onMouseUpSelfAction(childLocal)) {
             return true;
         }
     }
+
+    if (onMouseUpSelfAction(event)) return true;
 
     return false;
 }
@@ -267,17 +282,11 @@ bool Container::onMouseMove(const MouseMoveEvent &event) {
         MouseMoveEvent childLocal = event;
         childLocal.pos.x -= rect_.x;
         childLocal.pos.y -= rect_.y;
-        
-        if (child->onMouseMove(childLocal)) {
-            return true;
-        }
+
+        if (child->onMouseMove(childLocal)) return true;
     }
 
-    if (event.button_ == SDL_BUTTON_LEFT) { // FIXME
-        accumulatedRel_ += event.rel;
-        replaced_ = true;
-        return true;
-    }
+    if (onMouseMoveSelfAction(event)) return true;
     
     return false;
 }
@@ -299,15 +308,7 @@ void reorderWidgets(std::vector<std::pair<bool, Widget *>> &reorderingBufer) {
 }
 
 bool Container::update() {
-    bool updated = false;
-    if (replaced_) {
-        rect_.x += accumulatedRel_.x;
-        rect_.y += accumulatedRel_.y;
-        accumulatedRel_ = {0, 0};
-        replaced_ = false;
-        updated = true;
-        if (parent_) parent_->invalidate();
-    }
+    bool updated = updateSelfAction();
 
     std::vector<std::pair<bool, Widget *>> reorderingBufer(children_.size());
 
@@ -332,13 +333,7 @@ bool Container::update() {
 
 bool Container::render(SDL_Renderer* renderer) {
     assert(renderer);
-
-    bool needsReRender = needRerender_;
-
-    for (Widget *child : children_) {
-        needsReRender |= child->needRerender();
-    }
-    if (!needsReRender) return false;
+    if (!needRerender_) return false;
 
     RendererGuard rendererGuard(renderer);
 
@@ -351,12 +346,12 @@ bool Container::render(SDL_Renderer* renderer) {
 
     SDL_SetRenderTarget(renderer, texture_);
     SDL_RenderClear(renderer);
-    paintEvent(renderer);
+
+    renderSelfAction(renderer);
     
+    // render children into the texture; children should produce their own texture
     SDL_Rect clip = { 0, 0, rect_.w, rect_.h };
     SDL_RenderSetClipRect(renderer, &clip);
-
-    // render children into the texture; children should produce their own texture
     for (auto it = children_.rbegin(); it != children_.rend(); ++it) {
         Widget *child = *it;
         child->render(renderer);
@@ -366,12 +361,7 @@ bool Container::render(SDL_Renderer* renderer) {
         }
     }
 
-    for (Widget *child : children_) {
-        
-    }
-
     needRerender_ = false;  
-
     return true;
 }
 
@@ -386,14 +376,36 @@ void Container::addWdiget(Widget *widget) {
 
 // ---------------- Window ----------------
 
+void Window::renderSelfAction(SDL_Renderer* renderer) {
+    assert(renderer);
 
-// bool isMouseEvent(const SDL_Event &event) {
-//     return  event.type == SDL_MOUSEMOTION ||
-//             event.type == SDL_MOUSEBUTTONDOWN || 
-//             event.type == SDL_MOUSEBUTTONUP || 
-//             event.type == SDL_MOUSEWHEEL;
-// }
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255); 
+    SDL_Rect full = {0, 0, rect_.w, rect_.h};
+    SDL_RenderFillRect(renderer, &full);
+}
 
+bool Window::onMouseMoveSelfAction(const MouseMoveEvent &event) {
+    if (event.button_ == SDL_BUTTON_LEFT) { // FIXME
+        accumulatedRel_ += event.rel;
+        replaced_ = true;
+        return true;
+    }
+    
+    return false;
+}
+
+bool Window::updateSelfAction() {
+    if (replaced_) {
+        rect_.x += accumulatedRel_.x;
+        rect_.y += accumulatedRel_.y;
+        accumulatedRel_ = {0, 0};
+        replaced_ = false;
+        if (parent_) parent_->invalidate();
+        return true;
+    }
+    
+    return false;
+}
 
 // SDL_Texture* createTexture(const char *texturePath, SDL_Renderer* renderer) {
 //     assert(renderer);

@@ -73,14 +73,21 @@ public:
     virtual ~Widget();
 
 
-    virtual void paintEvent(SDL_Renderer* renderer);
+    virtual void renderSelfAction(SDL_Renderer* renderer);
     virtual bool render(SDL_Renderer* renderer);
     virtual bool update();
+    virtual bool updateSelfAction();
 
     // Events: return false to stop propagation (CONSUME), true to continue (PROPAGATE)
+    // propagation logic
     virtual bool onMouseDown(const MouseButtonEvent &event);
     virtual bool onMouseUp(const MouseButtonEvent &event);
     virtual bool onMouseMove(const MouseMoveEvent &event);
+
+    // event self processing logic
+    virtual bool onMouseDownSelfAction(const MouseButtonEvent &event);
+    virtual bool onMouseUpSelfAction(const MouseButtonEvent &event);
+    virtual bool onMouseMoveSelfAction(const MouseMoveEvent &event);
 
     // Getters / Setters
     void invalidate() { needRerender_ = true; }
@@ -96,9 +103,6 @@ friend class UIManager;
 class Container : public Widget {
 protected:
     std::vector<Widget *> children_;
-
-    gm_dot<int, 2> accumulatedRel_ = {0, 0};
-    bool replaced_ = false;
      
 public:
     Container(int x, int y, int width, int height, Widget *parent = nullptr);
@@ -117,10 +121,33 @@ public:
     void addWdiget(Widget *widget);
 };
 
-// class Window : public Container {
-// public:
-//     Window(int x, int y, int w, int h);
-//     bool onMouseMove(const MouseMoveEvent &event) override;
-// };
+class Window : public Container {
+protected:
+    gm_dot<int, 2> accumulatedRel_ = {0, 0};
+    bool replaced_ = true;
+public:
+    Window(int x, int y, int w, int h) : Container(x, y, w, h) {}    
+
+    void renderSelfAction(SDL_Renderer* renderer) override;
+
+    bool onMouseMoveSelfAction(const MouseMoveEvent &event) override;
+    bool updateSelfAction() override;
+};
+
+class Button : public Widget {
+    
+public:
+    Button(int x, int y, int w, int h) : Widget(x, y, w, h) {}    
+
+
+    void renderSelfAction(SDL_Renderer* renderer) {
+        assert(renderer);
+
+        SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255); 
+        SDL_Rect full = {0, 0, rect_.w, rect_.h};
+        SDL_RenderFillRect(renderer, &full);
+    }
+};
+
 
 #endif // MyGUI_H
