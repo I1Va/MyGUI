@@ -59,7 +59,7 @@ public: // user API
     UIManager(int width, int height, Uint32 frameDelay = 32);
     ~UIManager();
 
-    void setMainWidget(Widget *mainWidget);
+    void setMainWidget(int x, int y, Widget *mainWidget);
     void run();
     const Widget *hovered() const { return glState_.hovered; }
     const Widget *mouseActived() const { return glState_.mouseActived; }
@@ -78,7 +78,7 @@ protected:
     bool needRerender_ = true;
 
 public:
-    Widget(int x, int y, int width, int height, Widget *parent = nullptr);
+    Widget(int width, int height, Widget *parent = nullptr);
     virtual ~Widget();
 
 
@@ -100,6 +100,7 @@ public:
 
     // Getters / Setters
     virtual const std::vector<Widget *> &getChildren() const;
+    void setPosition(int x, int y) { rect_.x = x; rect_.y = y; }
     void setRerenderFlag() { 
         needRerender_ = true;
         if (parent_) parent_->invalidate();
@@ -119,7 +120,7 @@ protected:
     std::vector<Widget *> children_;
      
 public:
-    Container(int x, int y, int width, int height, Widget *parent=nullptr);
+    Container(int width, int height, Widget *parent=nullptr);
     ~Container();
 
     // Events
@@ -135,7 +136,7 @@ public:
     const std::vector<Widget *> &getChildren() const override;
 
     // User API
-    void addWidget(Widget *widget);
+    void addWidget(int x, int y, Widget *widget);
 };
 
 class Window : public Container {
@@ -143,7 +144,7 @@ protected:
     gm_dot<int, 2> accumulatedRel_ = {0, 0};
     bool replaced_ = true;
 public:
-    Window(int x, int y, int w, int h, Widget *parent=nullptr) : Container(x, y, w, h, parent) {}    
+    Window(int w, int h, Widget *parent=nullptr) : Container(w, h, parent) {}    
 
     bool onMouseMoveSelfAction(const MouseMotionEvent &event) override;
     bool updateSelfAction() override;
@@ -178,11 +179,11 @@ class Button : public Widget {
 public:
     Button
     (
-        int x, int y, int w, int h,
+        int w, int h,
         const char *unpressedButtonTexturePath, const char *pressedButtonTexturePath,
         std::function<void()> onClickFunction=nullptr, Widget *parent=nullptr
     ): 
-        Widget(x, y, w, h, parent),  
+        Widget(w, h, parent),  
         pressedButtonTexturePath_(pressedButtonTexturePath),
         unpressedButtonTexturePath_(unpressedButtonTexturePath),
         onClickFunction_(onClickFunction)

@@ -109,16 +109,14 @@ UIManager::~UIManager() {
     SDL_Quit();
 }
 
-void UIManager::setMainWidget(Widget *mainWidget) {
+void UIManager::setMainWidget(int x, int y, Widget *mainWidget) {
     if (wTreeRoot_ != nullptr) {
         std::cerr << "setMainWidget failed : wTreeRoot != nullptr\n";
         return;
     }
-
+    mainWidget->setPosition(x, y);
     wTreeRoot_ = mainWidget;
 }
-
-
 
 void UIManager::globalStateOnMouseMove(const Widget *wgt, const MouseMotionEvent &event) {
     if (!isInsideRect(wgt->rect(), event.pos.x, event.pos.y)) return;
@@ -218,7 +216,7 @@ void UIManager::run() {
 
         // update tree
         if (wTreeRoot_) wTreeRoot_->update();
-
+        
         // render pass
         SDL_SetRenderDrawColor(renderer_, 50, 50, 50, 255);
         SDL_RenderClear(renderer_);
@@ -240,8 +238,8 @@ void UIManager::run() {
 
 // ---------------- Widget ----------------
 
-Widget::Widget(int x, int y, int width, int height, Widget *parent)
-    : parent_(parent), rect_(x, y, width, height)
+Widget::Widget(int width, int height, Widget *parent)
+    : parent_(parent), rect_(0, 0, width, height)
 {}
 
 Widget::~Widget() {
@@ -321,8 +319,8 @@ SDL_Texture* Widget::texture() { return texture_; }
 
 // ---------------- Container ----------------
 
-Container::Container(int x, int y, int width, int height, Widget *parent)
-    : Widget(x, y, width, height, parent) {}
+Container::Container(int width, int height, Widget *parent)
+    : Widget(width, height, parent) {}
 
 Container::~Container() {
     for (Widget *child : children_) delete child;
@@ -457,11 +455,12 @@ const std::vector<Widget *> &Container::getChildren() const {
     return children_;
 }
 
-void Container::addWidget(Widget *widget) {
+void Container::addWidget(int x, int y, Widget *widget) {
     assert(widget);
 
     if (widget->parent() == this || widget->parent() == nullptr) {
         widget->parent_ = this;
+        widget->setPosition(x, y);
         children_.push_back(widget);
     } else {
         std::cerr << "addWidget failed : parent does not match\n";
