@@ -150,21 +150,6 @@ public:
     bool updateSelfAction() override;
 };
 
-// class Button : public Widget {
-    
-// public:
-//     Button(int x, int y, int w, int h) : Widget(x, y, w, h) {}    
-
-//     void renderSelfAction(SDL_Renderer* renderer) {
-//         assert(renderer);
-
-//         SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255); 
-//         SDL_Rect full = {0, 0, rect_.w, rect_.h};
-//         SDL_RenderFillRect(renderer, &full);
-//     }
-// };
-
-
 class Button : public Widget {
     const char *pressedButtonTexturePath_ = nullptr;
     const char *unpressedButtonTexturePath_ = nullptr;
@@ -182,71 +167,17 @@ public:
         int w, int h,
         const char *unpressedButtonTexturePath, const char *pressedButtonTexturePath,
         std::function<void()> onClickFunction=nullptr, Widget *parent=nullptr
-    ): 
-        Widget(w, h, parent),  
-        pressedButtonTexturePath_(pressedButtonTexturePath),
-        unpressedButtonTexturePath_(unpressedButtonTexturePath),
-        onClickFunction_(onClickFunction)
-    {}
+    );
  
 private:    
-    ~Button() {
-        if (pressedButtonTexture_) SDL_DestroyTexture(pressedButtonTexture_);
-        if (unpressedButtonTexture_) SDL_DestroyTexture(unpressedButtonTexture_);
-    }
+    ~Button();
 
-    void initTexture(SDL_Renderer* renderer) {
-        assert(renderer);
-    
-        if (textureCreated) return;
-        textureCreated = true;
-    
-        pressedButtonTexture_ = createTexture(pressedButtonTexturePath_, renderer);    
-        unpressedButtonTexture_ = createTexture(unpressedButtonTexturePath_, renderer);    
-    }
-
-    void renderSelfAction(SDL_Renderer* renderer) override {
-        initTexture(renderer);
-
-        if (pressed_) {
-            setPressedTexture(renderer);
-        } else {
-            setUnPressedTexture(renderer);
-        }
-    }
-
-    void setPressedTexture(SDL_Renderer* renderer) {
-        assert(renderer);
-
-        SDL_Rect buttonRect = {0, 0, rect_.w, rect_.h};
-        SDL_RenderCopy(renderer, pressedButtonTexture_, NULL, &buttonRect);
-    }
-
-    void setUnPressedTexture(SDL_Renderer* renderer) {
-        assert(renderer);
-
-        SDL_Rect buttonRect = {0, 0, rect_.w, rect_.h};
-        SDL_RenderCopy(renderer, unpressedButtonTexture_, NULL, &buttonRect);  
-    }
-
-    bool onMouseUpSelfAction(const MouseButtonEvent &event) override {
-        if (event.button == SDL_BUTTON_LEFT) {
-            pressed_ = false;
-            setRerenderFlag();
-            return true;
-        }
-        return false;
-    }
-
-    bool onMouseDownSelfAction(const MouseButtonEvent &event) override {
-        if (event.button == SDL_BUTTON_LEFT) {
-            pressed_ = true;
-            setRerenderFlag();
-            if (onClickFunction_) onClickFunction_();
-            return true;
-        }
-        return false;
-    }
+    void initTexture(SDL_Renderer* renderer);
+    void renderSelfAction(SDL_Renderer* renderer) override;
+    void setPressedTexture(SDL_Renderer* renderer);
+    void setUnPressedTexture(SDL_Renderer* renderer);
+    bool onMouseUpSelfAction(const MouseButtonEvent &event) override;
+    bool onMouseDownSelfAction(const MouseButtonEvent &event) override;
 };
 
 #endif // MyGUI_H

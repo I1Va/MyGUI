@@ -216,7 +216,7 @@ void UIManager::run() {
 
         // update tree
         if (wTreeRoot_) wTreeRoot_->update();
-        
+
         // render pass
         SDL_SetRenderDrawColor(renderer_, 50, 50, 50, 255);
         SDL_RenderClear(renderer_);
@@ -493,20 +493,75 @@ bool Window::updateSelfAction() {
     return false;
 }
 
-// SDL_Texture* createTexture(const char *texturePath, SDL_Renderer* renderer) {
-//     assert(renderer);
+// ---------------- Button ----------------
 
-//     if (!texturePath) return nullptr;
+Button::Button
+(
+    int w, int h,
+    const char *unpressedButtonTexturePath, const char *pressedButtonTexturePath,
+    std::function<void()> onClickFunction, Widget *parent
+): 
+    Widget(w, h, parent),  
+    pressedButtonTexturePath_(pressedButtonTexturePath),
+    unpressedButtonTexturePath_(unpressedButtonTexturePath),
+    onClickFunction_(onClickFunction)
+{}
 
-//     SDL_Texture* resultTexture = nullptr;
-//     SDL_Surface* surface = IMG_Load(texturePath);
-//     if (!surface) std::cerr << "MGButton texture load failed : " << texturePath << "\n";
+Button::~Button() {
+    if (pressedButtonTexture_) SDL_DestroyTexture(pressedButtonTexture_);
+    if (unpressedButtonTexture_) SDL_DestroyTexture(unpressedButtonTexture_);
+}
 
-//     if (surface) {
-//         resultTexture = SDL_CreateTextureFromSurface(renderer, surface);
-//         SDL_FreeSurface(surface);
-//     }
+void Button::initTexture(SDL_Renderer* renderer) {
+    assert(renderer);
 
-//     return resultTexture; 
-// }
+    if (textureCreated) return;
+    textureCreated = true;
+
+    pressedButtonTexture_ = createTexture(pressedButtonTexturePath_, renderer);    
+    unpressedButtonTexture_ = createTexture(unpressedButtonTexturePath_, renderer);    
+}
+
+void Button::renderSelfAction(SDL_Renderer* renderer) {
+    initTexture(renderer);
+
+    if (pressed_) {
+        setPressedTexture(renderer);
+    } else {
+        setUnPressedTexture(renderer);
+    }
+}
+
+void Button::setPressedTexture(SDL_Renderer* renderer) {
+    assert(renderer);
+
+    SDL_Rect buttonRect = {0, 0, rect_.w, rect_.h};
+    SDL_RenderCopy(renderer, pressedButtonTexture_, NULL, &buttonRect);
+}
+
+void Button::setUnPressedTexture(SDL_Renderer* renderer) {
+    assert(renderer);
+
+    SDL_Rect buttonRect = {0, 0, rect_.w, rect_.h};
+    SDL_RenderCopy(renderer, unpressedButtonTexture_, NULL, &buttonRect);  
+}
+
+bool Button::onMouseUpSelfAction(const MouseButtonEvent &event) {
+    if (event.button == SDL_BUTTON_LEFT) {
+        pressed_ = false;
+        setRerenderFlag();
+        return true;
+    }
+    return false;
+}
+
+bool Button::onMouseDownSelfAction(const MouseButtonEvent &event) {
+    if (event.button == SDL_BUTTON_LEFT) {
+        pressed_ = true;
+        setRerenderFlag();
+        if (onClickFunction_) onClickFunction_();
+        return true;
+    }
+    return false;
+}
 
