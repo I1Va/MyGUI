@@ -21,7 +21,7 @@ SDL_Texture* createTexture(const char *texturePath, SDL_Renderer* renderer) {
         SDL_FreeSurface(surface);
     }
 
-    return resultTexture; 
+    return resultTexture;
 }
 
 // ---------------- RendererGuard ----------------
@@ -40,10 +40,12 @@ RendererGuard::RendererGuard(SDL_Renderer* renderer) : renderer_(renderer) {
 }
 
 RendererGuard::~RendererGuard() {
-    SDL_SetRenderTarget(renderer_, savedTarget_);      
+    if (renderer_)
+        SDL_SetRenderTarget(renderer_, savedTarget_); // restore previous render target
+            
     SDL_SetRenderDrawColor(renderer_, r_, g_, b_, a_); 
     SDL_SetRenderDrawBlendMode(renderer_, blend_);     
-
+    
     if (!isNullRect(savedViewport_))
         SDL_RenderSetViewport(renderer_, &savedViewport_);
     else
@@ -54,7 +56,6 @@ RendererGuard::~RendererGuard() {
     else
         SDL_RenderSetClipRect(renderer_, nullptr);
 }
-
 // ---------------- Rect / util ----------------
 
 Rect::Rect(int x, int y, int w, int h) {
@@ -264,12 +265,16 @@ bool Widget::render(SDL_Renderer* renderer) {
 
     RendererGuard RendererGuard(renderer);
 
-    if (texture_) SDL_DestroyTexture(texture_);        
+    if (texture_) {
+        SDL_DestroyTexture(texture_);
+        texture_ = nullptr;
+    }
 
     texture_ = SDL_CreateTexture(renderer,
                                  SDL_PIXELFORMAT_RGBA8888,
                                  SDL_TEXTUREACCESS_TARGET,
                                  rect_.w, rect_.h);
+    assert(texture_);
 
     SDL_SetRenderTarget(renderer, texture_);
     SDL_RenderClear(renderer);
@@ -277,7 +282,6 @@ bool Widget::render(SDL_Renderer* renderer) {
     renderSelfAction(renderer);
 
     needRerender_ = false;
-
     return true;
 }
 
