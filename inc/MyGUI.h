@@ -127,7 +127,7 @@ protected:
      
 public:
     Container(int width, int height, Widget *parent=nullptr);
-    ~Container();
+    virtual ~Container();
 
     // Events
     bool onMouseDown(const MouseButtonEvent &event) override;
