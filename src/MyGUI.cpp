@@ -214,8 +214,10 @@ void UIManager::run() {
 
         handleSDLEvents(&running);
 
-        // update tree
+        // updates
         if (wTreeRoot_) wTreeRoot_->update();
+        for (std::function<void(int)> userEvent : userEvents_)
+            userEvent(frameDelay_);
 
         // render pass
         SDL_SetRenderDrawColor(renderer_, 50, 50, 50, 255);
@@ -231,8 +233,8 @@ void UIManager::run() {
         SDL_RenderPresent(renderer_);
 
         // frame pacing
-        // Uint32 frameTime = SDL_GetTicks() - frameStart;
-        // if (frameDelay_ > frameTime) SDL_Delay(frameDelay_ - frameTime);
+        Uint32 frameTime = SDL_GetTicks() - frameStart;
+        if (frameDelay_ > frameTime) SDL_Delay(frameDelay_ - frameTime);
     }
 }
 

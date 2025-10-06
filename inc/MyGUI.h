@@ -11,6 +11,8 @@
 #include "Events.h"
 
 
+const int DEFAULT_FRAME_DELAY_MS = 1000 / 60;
+
 SDL_Texture* createTexture(const char *texturePath, SDL_Renderer* renderer);
 
 
@@ -49,6 +51,8 @@ class UIManager {
     SDL_Renderer *renderer_ = nullptr;
     SDL_Window *mainWindow_ = nullptr;
 
+    std::vector<std::function<void(int)>> userEvents_ = {};
+
 private:
     void globalStateOnMouseMove(const Widget *wgt, const MouseMotionEvent &event);
     void globalStateOnMouseDown(const Widget *wgt, const MouseButtonEvent &event);
@@ -56,13 +60,14 @@ private:
     void initWTree(Widget *wgt);
 
 public: // user API
-    UIManager(int width, int height, Uint32 frameDelay = 32);
+    UIManager(int width, int height, Uint32 frameDelay=DEFAULT_FRAME_DELAY_MS);
     ~UIManager();
 
     void setMainWidget(int x, int y, Widget *mainWidget);
     void run();
     const Widget *hovered() const { return glState_.hovered; }
     const Widget *mouseActived() const { return glState_.mouseActived; }
+    void addUserEvent(std::function<void(int)> userEvent) { userEvents_.push_back(userEvent); };
 
 friend class Widget;
 };
@@ -101,6 +106,7 @@ public:
     // Getters / Setters
     virtual const std::vector<Widget *> &getChildren() const;
     void setPosition(int x, int y) { rect_.x = x; rect_.y = y; }
+    void setSize(int w, int h) { rect_.w = w; rect_.h = h; }
     void setRerenderFlag() { 
         needRerender_ = true;
         if (parent_) parent_->invalidate();
