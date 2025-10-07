@@ -40,6 +40,23 @@ SDL_Color Uint32ToSDL2gfxColor(Uint32 value) {
     return color;
 }
 
+SDL_Texture* createFontTexture(TTF_Font* font, const char text[], const int textSize, SDL_Color textColor, SDL_Renderer* renderer) {
+    assert(font);
+    assert(renderer);
+    assert(text);
+
+
+    SDL_Surface* textSurface = TTF_RenderText_Blended(font, text, textColor);
+    assert(textSurface);
+
+    SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+    assert(textTexture);
+
+    SDL_FreeSurface(textSurface);
+
+    return textTexture;
+}
+
 // ---------------- RendererGuard ----------------
 
 inline bool isNullRect(const SDL_Rect &rect) {
@@ -109,14 +126,15 @@ UIManager::UIManager(int width, int height, Uint32 frameDelay)
         height,
         0);
 
-    if (!mainWindow_) throw std::runtime_error(std::string("SDL_CreateWindow failed: ") + SDL_GetError());
+    assert(mainWindow_);
+
+    if (TTF_Init() == -1) {
+        SDL_Log("TTF_Init: %s", TTF_GetError());
+        assert(0);
+    }
 
     renderer_ = SDL_CreateRenderer(mainWindow_, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-    if (!renderer_) {
-        SDL_DestroyWindow(mainWindow_);
-        mainWindow_ = nullptr;
-        throw std::runtime_error(std::string("SDL_CreateRenderer failed: ") + SDL_GetError());
-    }
+    assert(renderer_);
 }
 
 UIManager::~UIManager() {
