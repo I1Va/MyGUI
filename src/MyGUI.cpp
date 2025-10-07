@@ -24,6 +24,22 @@ SDL_Texture* createTexture(const char *texturePath, SDL_Renderer* renderer) {
     return resultTexture;
 }
 
+Uint32 SDL2gfxColorToUint32(SDL_Color c) {
+    return (static_cast<Uint32>(c.a) << 24) |  
+           (static_cast<Uint32>(c.b) << 16) |  
+           (static_cast<Uint32>(c.g) << 8)  | 
+            static_cast<Uint32>(c.r);          
+}
+
+SDL_Color Uint32ToSDL2gfxColor(Uint32 value) {
+    SDL_Color color;
+    color.r = value & 0xFF;
+    color.g = (value >> 8) & 0xFF;
+    color.b = (value >> 16) & 0xFF;
+    color.a = (value >> 24) & 0xFF;
+    return color;
+}
+
 // ---------------- RendererGuard ----------------
 
 inline bool isNullRect(const SDL_Rect &rect) {
@@ -484,6 +500,14 @@ bool Window::onMouseMoveSelfAction(const MouseMotionEvent &event) {
     }
 
     return false;
+}
+
+void Window::renderSelfAction(SDL_Renderer* renderer) {
+    assert(renderer);
+
+    SDL_Rect widgetRect = {0, 0, rect_.w, rect_.h};
+    SDL_SetRenderDrawColor(renderer, DEFAULT_WINDOW_COLOR.r, DEFAULT_WINDOW_COLOR.g, DEFAULT_WINDOW_COLOR.b, DEFAULT_WINDOW_COLOR.a);
+    SDL_RenderFillRect(renderer, &widgetRect);
 }
 
 bool Window::updateSelfAction() {

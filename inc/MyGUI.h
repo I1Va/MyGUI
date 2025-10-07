@@ -12,9 +12,15 @@
 
 
 const int DEFAULT_FRAME_DELAY_MS = 1000 / 60;
+const int WINDOW_BORDER_SIZE = 15;
+const SDL_Color DEFAULT_WINDOW_COLOR = {220, 220, 220, 255};
+const SDL_Color BLACK_SDL_COLOR = {0, 0, 0, 255};
+const SDL_Color RED_SDL_COLOR = {255, 0, 0, 255};
+const SDL_Color BLUE_SDL_COLOR = {0, 0, 255, 255};
 
 SDL_Texture* createTexture(const char *texturePath, SDL_Renderer* renderer);
-
+Uint32 SDL2gfxColorToUint32(SDL_Color color);
+SDL_Color Uint32ToSDL2gfxColor(Uint32 value);
 
 class Widget;
 
@@ -152,6 +158,7 @@ protected:
 public:
     Window(int w, int h, Widget *parent=nullptr) : Container(w, h, parent) {}    
 
+    void renderSelfAction(SDL_Renderer* renderer) override;
     bool onMouseMoveSelfAction(const MouseMotionEvent &event) override;
     bool updateSelfAction() override;
 };
