@@ -299,12 +299,7 @@ bool Widget::render(SDL_Renderer* renderer) {
 
     RendererGuard RendererGuard(renderer);
 
-    if (texture_) {
-        SDL_DestroyTexture(texture_);
-        texture_ = nullptr;
-    }
-
-    texture_ = SDL_CreateTexture(renderer,
+    if (!texture_) texture_ = SDL_CreateTexture(renderer,
                                  SDL_PIXELFORMAT_RGBA8888,
                                  SDL_TEXTUREACCESS_TARGET,
                                  rect_.w, rect_.h);
@@ -459,13 +454,12 @@ bool Container::update() {
 
 bool Container::render(SDL_Renderer* renderer) {
     assert(renderer);
+
     if (!needRerender_) return false;
 
     RendererGuard rendererGuard(renderer);
 
-    if (texture_) SDL_DestroyTexture(texture_);     
-
-    texture_ = SDL_CreateTexture(renderer,
+    if (!texture_) texture_ = SDL_CreateTexture(renderer,
                                  SDL_PIXELFORMAT_RGBA8888,
                                  SDL_TEXTUREACCESS_TARGET,
                                  rect_.w, rect_.h);
