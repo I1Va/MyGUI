@@ -25,6 +25,11 @@ SDL_Texture* createFontTexture(TTF_Font* font, const char text[], const int text
 Uint32 SDL2gfxColorToUint32(SDL_Color color);
 SDL_Color Uint32ToSDL2gfxColor(Uint32 value);
 
+struct ButtonTexturePath {
+    const char *unpressed;
+    const char *pressed;
+};
+
 class Widget;
 
 class RendererGuard {
@@ -48,14 +53,14 @@ struct Rect : public SDL_Rect {
 bool isInsideRect(const Rect& rect, const int x, const int y);
 
 struct UIManagerglobalState {
-    const Widget *hovered = nullptr;
-    const Widget *mouseActived = nullptr;
+    Widget *hovered = nullptr;
+    Widget *mouseActived = nullptr;
 };
 
 class UIManager {
     Widget *wTreeRoot_ = nullptr;
     UIManagerglobalState glState_;
-    Uint32 frameDelay_;
+    Uint32 frameDelayMs_;
 
     SDL_Renderer *renderer_ = nullptr;
     SDL_Window *mainWindow_ = nullptr;
@@ -63,8 +68,10 @@ class UIManager {
     std::vector<std::function<void(int)>> userEvents_ = {};
 
 private:
-    void globalStateOnMouseMove(const Widget *wgt, const MouseMotionEvent &event);
-    void globalStateOnMouseDown(const Widget *wgt, const MouseButtonEvent &event);
+    void globalStateOnMouseWheel(Widget *wgt, const MouseWheelEvent  &event);
+    void globalStateOnMouseMove (Widget *wgt, const MouseMotionEvent &event);
+    void globalStateOnMouseDown (Widget *wgt, const MouseButtonEvent &event);
+
     void handleSDLEvents(bool *running);
     void initWTree(Widget *wgt);
 
@@ -105,9 +112,11 @@ public:
     // propagation logic
     virtual bool onMouseDown(const MouseButtonEvent &event);
     virtual bool onMouseUp(const MouseButtonEvent &event);
+    virtual bool onMouseWheel(const MouseWheelEvent &event);
     virtual bool onMouseMove(const MouseMotionEvent &event);
 
     // event self processing logic
+    virtual bool onMouseWheelSelfAction(const MouseWheelEvent &event);
     virtual bool onMouseDownSelfAction(const MouseButtonEvent &event);
     virtual bool onMouseUpSelfAction(const MouseButtonEvent &event);
     virtual bool onMouseMoveSelfAction(const MouseMotionEvent &event);

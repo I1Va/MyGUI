@@ -13,6 +13,13 @@ struct CordEvent {
     CordEvent() = default;    
 };
 
+struct MouseWheelEvent {
+    gm_dot<int, 2> rot; 
+
+    MouseWheelEvent(int rotX, int rotY): rot(rotX, rotY) {}
+    MouseWheelEvent() = default;
+};
+
 struct MouseButtonEvent : public CordEvent {
     Uint8 button;
     MouseButtonEvent(int x, int y, Uint8 button): CordEvent(x, y), button(button) {}

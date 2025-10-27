@@ -116,7 +116,7 @@ inline bool isMouseSDLevent(const SDL_Event &event) {
 // ---------------- UIManager ----------------
 
 UIManager::UIManager(int width, int height, Uint32 frameDelay)
-    : frameDelay_(frameDelay)
+    : frameDelayMs_(frameDelay)
 {
     mainWindow_ = SDL_CreateWindow(
         nullptr,
@@ -153,7 +153,7 @@ void UIManager::setMainWidget(int x, int y, Widget *mainWidget) {
     wTreeRoot_ = mainWidget;
 }
 
-void UIManager::globalStateOnMouseMove(const Widget *wgt, const MouseMotionEvent &event) {
+void UIManager::globalStateOnMouseMove(Widget *wgt, const MouseMotionEvent &event) {
     if (!isInsideRect(wgt->rect(), event.pos.x, event.pos.y)) return;
     
     if (event.button == SDL_BUTTON_LEFT) glState_.hovered = wgt;
@@ -167,7 +167,11 @@ void UIManager::globalStateOnMouseMove(const Widget *wgt, const MouseMotionEvent
     }
 }
 
-void UIManager::globalStateOnMouseDown(const Widget *wgt, const MouseButtonEvent &event) {
+void UIManager::globalStateOnMouseWheel(Widget *wgt, const MouseWheelEvent &event) {    
+    return;
+}
+
+void UIManager::globalStateOnMouseDown(Widget *wgt, const MouseButtonEvent &event) {
     if (!isInsideRect(wgt->rect(), event.pos.x, event.pos.y)) return;
     
     if (event.button == SDL_BUTTON_LEFT) glState_.mouseActived = wgt;
@@ -189,6 +193,7 @@ void UIManager::handleSDLEvents(bool *running) {
     SDL_Event SDLEvent = {};
     MouseButtonEvent mouseButtonEvent = {};
     MouseMotionEvent mouseMotionEvent = {};
+    MouseWheelEvent  mouseWheelEvent  = {};
     
     while (SDL_PollEvent(&SDLEvent)) {
         if (SDLEvent.type == SDL_QUIT || SDLEvent.type == SDL_KEYDOWN && SDLEvent.key.keysym.sym == SDLK_ESCAPE) {
@@ -206,13 +211,22 @@ void UIManager::handleSDLEvents(bool *running) {
                 globalStateOnMouseMove(wTreeRoot_, mouseMotionEvent);
                 wTreeRoot_->onMouseMove(mouseMotionEvent);
                 break;
+            
+            case SDL_MOUSEWHEEL:
+                mouseWheelEvent = MouseWheelEvent(SDLEvent.wheel.x, SDLEvent.wheel.y);
+            
+                globalStateOnMouseWheel(wTreeRoot_, mouseWheelEvent);
+                if (glState_.mouseActived) glState_.mouseActived->onMouseWheel(mouseWheelEvent);
+                
+                break;
+            
             case SDL_MOUSEBUTTONDOWN:
                 mouseButtonEvent = MouseButtonEvent(SDLEvent.button.x, SDLEvent.button.y, SDLEvent.button.button);
                     
                 globalStateOnMouseDown(wTreeRoot_, mouseButtonEvent);
                 wTreeRoot_->onMouseDown(mouseButtonEvent);
-                
                 break;
+    
             case SDL_MOUSEBUTTONUP:
                 mouseButtonEvent = MouseButtonEvent(SDLEvent.button.x, SDLEvent.button.y, SDLEvent.button.button);
 
@@ -252,7 +266,7 @@ void UIManager::run() {
         // updates
         if (wTreeRoot_) wTreeRoot_->update();
         for (std::function<void(int)> userEvent : userEvents_)
-            userEvent(frameDelay_);
+            userEvent(frameDelayMs_);
 
         // render pass
         SDL_SetRenderDrawColor(renderer_, 50, 50, 50, 255);
@@ -269,7 +283,7 @@ void UIManager::run() {
 
         // frame pacing
         Uint32 frameTime = SDL_GetTicks() - frameStart;
-        if (frameDelay_ > frameTime) SDL_Delay(frameDelay_ - frameTime);
+        if (frameDelayMs_ > frameTime) SDL_Delay(frameDelayMs_ - frameTime);
     }
 }
 
@@ -317,11 +331,17 @@ bool Widget::render(SDL_Renderer* renderer) {
 bool Widget::updateSelfAction() { return false; }
 bool Widget::update() { return updateSelfAction(); }
 
+
+bool Widget::onMouseWheel(const MouseWheelEvent &event) {
+    return onMouseWheelSelfAction(event);
+}
+
 bool Widget::onMouseDown(const MouseButtonEvent &event) {
     if (!isInsideRect(rect_, event.pos.x, event.pos.y)) return false;
 
     return onMouseDownSelfAction(event);
 }
+
 bool Widget::onMouseUp(const MouseButtonEvent &event) {
     if (!isInsideRect(rect_, event.pos.x, event.pos.y)) return false;
 
@@ -331,6 +351,10 @@ bool Widget::onMouseMove(const MouseMotionEvent &event) {
     if (!isInsideRect(rect_, event.pos.x, event.pos.y)) return false;
 
     return onMouseMoveSelfAction(event);
+}
+
+bool Widget::onMouseWheelSelfAction(const MouseWheelEvent &event) {
+    return true;
 }
 
 bool Widget::onMouseDownSelfAction(const MouseButtonEvent &event) {
