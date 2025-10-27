@@ -167,6 +167,14 @@ void UIManager::globalStateOnMouseMove(Widget *wgt, const MouseMotionEvent &even
     }
 }
 
+void UIManager::globalStateOnKeyDown(Widget *wgt, const KeyEvent &event) {    
+    return;
+}
+
+void UIManager::globalStateOnKeyUp(Widget *wgt, const KeyEvent &event) {    
+    return;
+}
+
 void UIManager::globalStateOnMouseWheel(Widget *wgt, const MouseWheelEvent &event) {    
     return;
 }
@@ -194,6 +202,7 @@ void UIManager::handleSDLEvents(bool *running) {
     MouseButtonEvent mouseButtonEvent = {};
     MouseMotionEvent mouseMotionEvent = {};
     MouseWheelEvent  mouseWheelEvent  = {};
+    KeyEvent         keyEvent         = {};
     
     while (SDL_PollEvent(&SDLEvent)) {
         if (SDLEvent.type == SDL_QUIT || SDLEvent.type == SDL_KEYDOWN && SDLEvent.key.keysym.sym == SDLK_ESCAPE) {
@@ -203,6 +212,18 @@ void UIManager::handleSDLEvents(bool *running) {
 
        
         switch (SDLEvent.type) {
+            case SDL_KEYDOWN:
+                keyEvent = KeyEvent(SDLEvent.key.keysym.sym);
+                globalStateOnKeyDown(wTreeRoot_, keyEvent);
+                if (glState_.mouseActived) glState_.mouseActived->onKeyDown(keyEvent);
+                break;
+            
+            case SDL_KEYUP:
+                keyEvent = KeyEvent(SDLEvent.key.keysym.sym);
+                globalStateOnKeyDown(wTreeRoot_, keyEvent);
+                if (glState_.mouseActived) glState_.mouseActived->onKeyUp(keyEvent);
+                break;
+
             case SDL_MOUSEMOTION:
                 SDL_GetMouseState(&curMousePos.x, &curMousePos.y);
                 mouseMotionEvent = MouseMotionEvent(curMousePos.x, curMousePos.y, SDLEvent.button.button, 
@@ -331,17 +352,14 @@ bool Widget::render(SDL_Renderer* renderer) {
 bool Widget::updateSelfAction() { return false; }
 bool Widget::update() { return updateSelfAction(); }
 
-
 bool Widget::onMouseWheel(const MouseWheelEvent &event) {
     return onMouseWheelSelfAction(event);
 }
-
 bool Widget::onMouseDown(const MouseButtonEvent &event) {
     if (!isInsideRect(rect_, event.pos.x, event.pos.y)) return false;
 
     return onMouseDownSelfAction(event);
 }
-
 bool Widget::onMouseUp(const MouseButtonEvent &event) {
     if (!isInsideRect(rect_, event.pos.x, event.pos.y)) return false;
 
@@ -352,11 +370,17 @@ bool Widget::onMouseMove(const MouseMotionEvent &event) {
 
     return onMouseMoveSelfAction(event);
 }
+bool Widget::onKeyDown(const KeyEvent &event) {
+    return onKeyDownSelfAction(event); 
+}
+bool Widget::onKeyUp(const KeyEvent &event) {
+    return onKeyUpSelfAction(event); 
+}
+
 
 bool Widget::onMouseWheelSelfAction(const MouseWheelEvent &event) {
     return true;
 }
-
 bool Widget::onMouseDownSelfAction(const MouseButtonEvent &event) {
     return true;
 }
@@ -366,6 +390,13 @@ bool Widget::onMouseUpSelfAction(const MouseButtonEvent &event) {
 bool Widget::onMouseMoveSelfAction(const MouseMotionEvent &event) {
     return true;
 }
+bool Widget::onKeyDownSelfAction(const KeyEvent &event) {
+    return true;
+}
+bool Widget::onKeyUpSelfAction(const KeyEvent &event) {
+    return true;
+}
+
 
 const std::vector<Widget *> &Widget::getChildren() const {
     static const std::vector<Widget*> empty;

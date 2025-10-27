@@ -13,6 +13,13 @@ struct CordEvent {
     CordEvent() = default;    
 };
 
+struct KeyEvent {
+    int sym;
+
+    explicit KeyEvent(int sym): sym(sym) {}
+    KeyEvent() = default;
+};
+
 struct MouseWheelEvent {
     gm_dot<int, 2> rot; 
 
@@ -21,7 +28,7 @@ struct MouseWheelEvent {
 };
 
 struct MouseButtonEvent : public CordEvent {
-    Uint8 button;
+    u_int8_t button;
     MouseButtonEvent(int x, int y, Uint8 button): CordEvent(x, y), button(button) {}
     MouseButtonEvent() = default;
 };

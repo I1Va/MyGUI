@@ -71,6 +71,8 @@ private:
     void globalStateOnMouseWheel(Widget *wgt, const MouseWheelEvent  &event);
     void globalStateOnMouseMove (Widget *wgt, const MouseMotionEvent &event);
     void globalStateOnMouseDown (Widget *wgt, const MouseButtonEvent &event);
+    void globalStateOnKeyDown   (Widget *wgt, const KeyEvent         &event);
+    void globalStateOnKeyUp     (Widget *wgt, const KeyEvent         &event);
 
     void handleSDLEvents(bool *running);
     void initWTree(Widget *wgt);
@@ -114,12 +116,16 @@ public:
     virtual bool onMouseUp(const MouseButtonEvent &event);
     virtual bool onMouseWheel(const MouseWheelEvent &event);
     virtual bool onMouseMove(const MouseMotionEvent &event);
+    virtual bool onKeyDown(const KeyEvent &event);
+    virtual bool onKeyUp(const KeyEvent &event);
 
     // event self processing logic
     virtual bool onMouseWheelSelfAction(const MouseWheelEvent &event);
     virtual bool onMouseDownSelfAction(const MouseButtonEvent &event);
     virtual bool onMouseUpSelfAction(const MouseButtonEvent &event);
     virtual bool onMouseMoveSelfAction(const MouseMotionEvent &event);
+    virtual bool onKeyDownSelfAction(const KeyEvent &event);
+    virtual bool onKeyUpSelfAction(const KeyEvent &event);
 
     // Getters / Setters
     virtual const std::vector<Widget *> &getChildren() const;
