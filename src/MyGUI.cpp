@@ -488,7 +488,7 @@ bool Container::update() {
 
     std::vector<std::pair<bool, Widget *>> reorderingBufer(children_.size());
 
-    for (size_t i = 0; i < children_.size(); i++) {
+    for (std::size_t i = 0; i < children_.size(); i++) {
         Widget *child = children_[i];
         bool childUpdated = child->update();
         reorderingBufer[i] = {childUpdated, child};
@@ -496,7 +496,7 @@ bool Container::update() {
     }
 
     reorderWidgets(reorderingBufer);
-    for (size_t i = 0; i < children_.size(); i++) {
+    for (std::size_t i = 0; i < children_.size(); i++) {
         children_[i] = reorderingBufer[i].second;
     }
 
