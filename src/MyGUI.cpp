@@ -213,13 +213,13 @@ void UIManager::handleSDLEvents(bool *running) {
        
         switch (SDLEvent.type) {
             case SDL_KEYDOWN:
-                keyEvent = KeyEvent(SDLEvent.key.keysym.sym);
+                keyEvent = KeyEvent(SDLEvent.key.keysym.sym, SDLEvent.key.keysym.mod);
                 globalStateOnKeyDown(wTreeRoot_, keyEvent);
                 if (glState_.mouseActived) glState_.mouseActived->onKeyDown(keyEvent);
                 break;
             
             case SDL_KEYUP:
-                keyEvent = KeyEvent(SDLEvent.key.keysym.sym);
+                keyEvent = KeyEvent(SDLEvent.key.keysym.sym, SDLEvent.key.keysym.mod);
                 globalStateOnKeyDown(wTreeRoot_, keyEvent);
                 if (glState_.mouseActived) glState_.mouseActived->onKeyUp(keyEvent);
                 break;

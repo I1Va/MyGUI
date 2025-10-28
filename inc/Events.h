@@ -15,8 +15,9 @@ struct CordEvent {
 
 struct KeyEvent {
     int sym;
+    int keymod;
 
-    explicit KeyEvent(int sym): sym(sym) {}
+    explicit KeyEvent(int sym, int keymod): sym(sym), keymod(keymod) {}
     KeyEvent() = default;
 };
 
