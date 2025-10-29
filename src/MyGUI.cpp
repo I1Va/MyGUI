@@ -7,6 +7,15 @@
 
 // ---------------- Textures ---------------------
 
+SDL_Rect getTextSize(TTF_Font *font, const char text[]) {
+    SDL_Rect textRect = {0, 0, 0, 0};
+    if (TTF_SizeUTF8(font, text, &textRect.w, &textRect.h)) {
+        SDL_Log("TTF_SizeUTF8 failed: %s", TTF_GetError());
+    }
+
+    return textRect;
+}
+
 SDL_Texture* createTexture(const char *texturePath, SDL_Renderer* renderer) {
     assert(renderer);
 
@@ -40,7 +49,7 @@ SDL_Color Uint32ToSDL2gfxColor(Uint32 value) {
     return color;
 }
 
-SDL_Texture* createFontTexture(TTF_Font* font, const char text[], const int textSize, SDL_Color textColor, SDL_Renderer* renderer) {
+SDL_Texture* createFontTexture(TTF_Font* font, const char text[], SDL_Color textColor, SDL_Renderer* renderer) {
     assert(font);
     assert(renderer);
     assert(text);

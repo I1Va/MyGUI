@@ -20,8 +20,9 @@ inline constexpr SDL_Color RED_SDL_COLOR = {255, 0, 0, 255};
 inline constexpr SDL_Color BLUE_SDL_COLOR = {0, 0, 255, 255};
 inline constexpr SDL_Color WHITE_SDL_COLOR = {255, 255, 255, 255};
 
+SDL_Rect getTextSize(TTF_Font *font, const char text[]);
 SDL_Texture* createTexture(const char *texturePath, SDL_Renderer* renderer);
-SDL_Texture* createFontTexture(TTF_Font* font, const char text[], const int textSize, SDL_Color textColor, SDL_Renderer* renderer);
+SDL_Texture* createFontTexture(TTF_Font* font, const char text[], SDL_Color textColor, SDL_Renderer* renderer);
 Uint32 SDL2gfxColorToUint32(SDL_Color color);
 SDL_Color Uint32ToSDL2gfxColor(Uint32 value);
 
@@ -84,7 +85,10 @@ public: // user API
     void setMainWidget(int x, int y, Widget *mainWidget);
     void run();
     const Widget *hovered() const { return glState_.hovered; }
+    void setHovered(Widget *widget) { glState_.hovered = widget; }
     const Widget *mouseActived() const { return glState_.mouseActived; }
+    void setMouseActived(Widget *widget) { glState_.mouseActived = widget; }
+
     void addUserEvent(std::function<void(int)> userEvent) { userEvents_.push_back(userEvent); };
     TTF_Font* createFont(const char fontPath[], const size_t fontSize);
 
