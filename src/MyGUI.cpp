@@ -144,6 +144,18 @@ UIManager::~UIManager() {
     SDL_Quit();
 }
 
+TTF_Font* UIManager::createFont(const char fontPath[], const size_t fontSize) {
+    assert(fontPath);
+
+    TTF_Font* font_ = TTF_OpenFont(fontPath, fontSize); 
+    if (!font_) {
+        SDL_Log("TTF_OpenFont: %s", TTF_GetError());
+        assert(0);
+    }
+
+    return font_;
+}
+
 void UIManager::setMainWidget(int x, int y, Widget *mainWidget) {
     if (wTreeRoot_ != nullptr) {
         std::cerr << "setMainWidget failed : wTreeRoot != nullptr\n";
