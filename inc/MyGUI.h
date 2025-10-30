@@ -186,36 +186,36 @@ public:
     bool updateSelfAction() override;
 };
 
-class Button : public Widget {
-    const char *pressedButtonTexturePath_ = nullptr;
-    const char *unpressedButtonTexturePath_ = nullptr;
+// class Button : public Widget {
+//     const char *pressedButtonTexturePath_ = nullptr;
+//     const char *unpressedButtonTexturePath_ = nullptr;
 
-    SDL_Texture* pressedButtonTexture_ = nullptr;
-    SDL_Texture* unpressedButtonTexture_ = nullptr;
-    bool textureCreated = false;
+//     SDL_Texture* pressedButtonTexture_ = nullptr;
+//     SDL_Texture* unpressedButtonTexture_ = nullptr;
+//     bool textureCreated = false;
    
-    bool pressed_ = false;
-    std::function<void()> onClickFunction_= nullptr;
+//     bool pressed_ = false;
+//     std::function<void()> onClickFunction_= nullptr;
 
-public:
-    Button
-    (
-        int w, int h,
-        const char *unpressedButtonTexturePath, const char *pressedButtonTexturePath,
-        std::function<void()> onClickFunction=nullptr, Widget *parent=nullptr
-    );
+// public:
+//     Button
+//     (
+//         int w, int h,
+//         const char *unpressedButtonTexturePath, const char *pressedButtonTexturePath,
+//         std::function<void()> onClickFunction=nullptr, Widget *parent=nullptr
+//     );
 
-    ~Button();
+//     ~Button();
  
-private:    
+// private:    
     
 
-    void initTexture(SDL_Renderer* renderer);
-    void renderSelfAction(SDL_Renderer* renderer) override;
-    void setPressedTexture(SDL_Renderer* renderer);
-    void setUnPressedTexture(SDL_Renderer* renderer);
-    bool onMouseUpSelfAction(const MouseButtonEvent &event) override;
-    bool onMouseDownSelfAction(const MouseButtonEvent &event) override;
-};
+//     void initTexture(SDL_Renderer* renderer);
+//     void renderSelfAction(SDL_Renderer* renderer) override;
+//     void setPressedTexture(SDL_Renderer* renderer);
+//     void setUnPressedTexture(SDL_Renderer* renderer);
+//     bool onMouseUpSelfAction(const MouseButtonEvent &event) override;
+//     bool onMouseDownSelfAction(const MouseButtonEvent &event) override;
+// };
 
 #endif // MyGUI_H

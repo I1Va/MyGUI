@@ -613,73 +613,73 @@ bool Window::updateSelfAction() {
 
 // ---------------- Button ----------------
 
-Button::Button
-(
-    int w, int h,
-    const char *unpressedButtonTexturePath, const char *pressedButtonTexturePath,
-    std::function<void()> onClickFunction, Widget *parent
-): 
-    Widget(w, h, parent),  
-    pressedButtonTexturePath_(pressedButtonTexturePath),
-    unpressedButtonTexturePath_(unpressedButtonTexturePath),
-    onClickFunction_(onClickFunction)
-{}
+// Button::Button
+// (
+//     int w, int h,
+//     const char *unpressedButtonTexturePath, const char *pressedButtonTexturePath,
+//     std::function<void()> onClickFunction, Widget *parent
+// ): 
+//     Widget(w, h, parent),  
+//     pressedButtonTexturePath_(pressedButtonTexturePath),
+//     unpressedButtonTexturePath_(unpressedButtonTexturePath),
+//     onClickFunction_(onClickFunction)
+// {}
 
-Button::~Button() {
-    if (pressedButtonTexture_) SDL_DestroyTexture(pressedButtonTexture_);
-    if (unpressedButtonTexture_) SDL_DestroyTexture(unpressedButtonTexture_);
-}
+// Button::~Button() {
+//     if (pressedButtonTexture_) SDL_DestroyTexture(pressedButtonTexture_);
+//     if (unpressedButtonTexture_) SDL_DestroyTexture(unpressedButtonTexture_);
+// }
 
-void Button::initTexture(SDL_Renderer* renderer) {
-    assert(renderer);
+// void Button::initTexture(SDL_Renderer* renderer) {
+//     assert(renderer);
 
-    if (textureCreated) return;
-    textureCreated = true;
+//     if (textureCreated) return;
+//     textureCreated = true;
 
-    pressedButtonTexture_ = createTexture(pressedButtonTexturePath_, renderer);    
-    unpressedButtonTexture_ = createTexture(unpressedButtonTexturePath_, renderer);    
-}
+//     pressedButtonTexture_ = createTexture(pressedButtonTexturePath_, renderer);    
+//     unpressedButtonTexture_ = createTexture(unpressedButtonTexturePath_, renderer);    
+// }
 
-void Button::renderSelfAction(SDL_Renderer* renderer) {
-    initTexture(renderer);
+// void Button::renderSelfAction(SDL_Renderer* renderer) {
+//     initTexture(renderer);
 
-    if (pressed_) {
-        setPressedTexture(renderer);
-    } else {
-        setUnPressedTexture(renderer);
-    }
-}
+//     if (pressed_) {
+//         setPressedTexture(renderer);
+//     } else {
+//         setUnPressedTexture(renderer);
+//     }
+// }
 
-void Button::setPressedTexture(SDL_Renderer* renderer) {
-    assert(renderer);
+// void Button::setPressedTexture(SDL_Renderer* renderer) {
+//     assert(renderer);
 
-    SDL_Rect buttonRect = {0, 0, rect_.w, rect_.h};
-    SDL_RenderCopy(renderer, pressedButtonTexture_, NULL, &buttonRect);
-}
+//     SDL_Rect buttonRect = {0, 0, rect_.w, rect_.h};
+//     SDL_RenderCopy(renderer, pressedButtonTexture_, NULL, &buttonRect);
+// }
 
-void Button::setUnPressedTexture(SDL_Renderer* renderer) {
-    assert(renderer);
+// void Button::setUnPressedTexture(SDL_Renderer* renderer) {
+//     assert(renderer);
 
-    SDL_Rect buttonRect = {0, 0, rect_.w, rect_.h};
-    SDL_RenderCopy(renderer, unpressedButtonTexture_, NULL, &buttonRect);  
-}
+//     SDL_Rect buttonRect = {0, 0, rect_.w, rect_.h};
+//     SDL_RenderCopy(renderer, unpressedButtonTexture_, NULL, &buttonRect);  
+// }
 
-bool Button::onMouseUpSelfAction(const MouseButtonEvent &event) {
-    if (event.button == SDL_BUTTON_LEFT) {
-        pressed_ = false;
-        setRerenderFlag();
-        return true;
-    }
-    return false;
-}
+// bool Button::onMouseUpSelfAction(const MouseButtonEvent &event) {
+//     if (event.button == SDL_BUTTON_LEFT) {
+//         pressed_ = false;
+//         setRerenderFlag();
+//         return true;
+//     }
+//     return false;
+// }
 
-bool Button::onMouseDownSelfAction(const MouseButtonEvent &event) {
-    if (event.button == SDL_BUTTON_LEFT) {
-        pressed_ = true;
-        setRerenderFlag();
-        if (onClickFunction_) onClickFunction_();
-        return true;
-    }
-    return false;
-}
+// bool Button::onMouseDownSelfAction(const MouseButtonEvent &event) {
+//     if (event.button == SDL_BUTTON_LEFT) {
+//         pressed_ = true;
+//         setRerenderFlag();
+//         if (onClickFunction_) onClickFunction_();
+//         return true;
+//     }
+//     return false;
+// }
 
