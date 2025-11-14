@@ -53,17 +53,17 @@ bool Widget::onMouseWheel(const MouseWheelEvent &event) {
     return onMouseWheelSelfAction(event);
 }
 bool Widget::onMouseDown(const MouseButtonEvent &event) {
-    if (!isInsideRect(rect_, event.pos.x, event.pos.y)) return false;
+    if (!isInsideRect(rect_, event.pos.x, event.pos.y)) return PROPAGATE;
 
     return onMouseDownSelfAction(event);
 }
 bool Widget::onMouseUp(const MouseButtonEvent &event) {
-    if (!isInsideRect(rect_, event.pos.x, event.pos.y)) return false;
+    if (!isInsideRect(rect_, event.pos.x, event.pos.y)) return PROPAGATE;
 
     return onMouseUpSelfAction(event);
 }
 bool Widget::onMouseMove(const MouseMotionEvent &event) {
-    if (!isInsideRect(rect_, event.pos.x, event.pos.y)) return false;
+    if (!isInsideRect(rect_, event.pos.x, event.pos.y)) return PROPAGATE;
 
     return onMouseMoveSelfAction(event);
 }
@@ -76,22 +76,22 @@ bool Widget::onKeyUp(const KeyEvent &event) {
 
 
 bool Widget::onMouseWheelSelfAction(const MouseWheelEvent &event) {
-    return true;
+    return PROPAGATE;
 }
 bool Widget::onMouseDownSelfAction(const MouseButtonEvent &event) {
-    return true;
+    return PROPAGATE;
 }
 bool Widget::onMouseUpSelfAction(const MouseButtonEvent &event) {
-    return true;
+    return PROPAGATE;
 }
 bool Widget::onMouseMoveSelfAction(const MouseMotionEvent &event) {
-    return true;
+    return PROPAGATE;
 }
 bool Widget::onKeyDownSelfAction(const KeyEvent &event) {
-    return true;
+    return PROPAGATE;
 }
 bool Widget::onKeyUpSelfAction(const KeyEvent &event) {
-    return true;
+    return PROPAGATE;
 }
 
 

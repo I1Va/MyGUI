@@ -34,8 +34,18 @@ private:
     void globalStateOnKeyDown   (Widget *wgt, const KeyEvent         &event);
     void globalStateOnKeyUp     (Widget *wgt, const KeyEvent         &event);
 
+    bool modalWidgetsOnMouseWheel(const MouseWheelEvent  &event);
+    bool modalWidgetsOnMouseMove (const MouseMotionEvent &event);
+    bool modalWidgetsOnMouseDown (const MouseButtonEvent &event);
+    bool modalWidgetsOnKeyDown   (const KeyEvent         &event);
+    bool modalWidgetsOnKeyUp     (const KeyEvent         &event);
+    bool modalWidgetsOnMouseUp   (const MouseButtonEvent &event); 
+
     void handleSDLEvents(bool *running);
     void initWTree(Widget *wgt);
+
+    void updatePass();
+    void renderPass();
 
 public: // user API
     UIManager(int width, int height, Uint32 frameDelay=DEFAULT_FRAME_DELAY_MS);

@@ -55,7 +55,9 @@ class RendererGuard {
     SDL_BlendMode blend_;
 
 public:
-    RendererGuard(SDL_Renderer* renderer) {
+    RendererGuard(SDL_Renderer* renderer): renderer_(renderer) {
+        assert(renderer_);
+    
         savedTarget_ = SDL_GetRenderTarget(renderer_);
         SDL_GetRenderDrawColor(renderer_, &r_, &g_, &b_, &a_);
         SDL_GetRenderDrawBlendMode(renderer_, &blend_);
@@ -64,7 +66,6 @@ public:
     }
 
     ~RendererGuard() {
-        if (renderer_)
         SDL_SetRenderTarget(renderer_, savedTarget_); // restore previous render target
             
         SDL_SetRenderDrawColor(renderer_, r_, g_, b_, a_); 

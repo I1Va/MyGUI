@@ -67,6 +67,8 @@ public:
     Rect rect() const;
     const Widget *parent() const;
     SDL_Texture* texture();
+
+    friend class UIManager;
 };
 
 

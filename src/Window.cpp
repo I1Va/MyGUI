@@ -6,10 +6,10 @@ bool Window::onMouseMoveSelfAction(const MouseMotionEvent &event) {
     if (this == UIManager_->mouseActived() && event.button == SDL_BUTTON_LEFT) {
         accumulatedRel_ += event.rel;
         replaced_ = true;
-        return true;
+        return CONSUME;
     }
 
-    return false;
+    return PROPAGATE;
 }
 
 void Window::renderSelfAction(SDL_Renderer* renderer) {
@@ -27,8 +27,8 @@ bool Window::updateSelfAction() {
         accumulatedRel_ = {0, 0};
         replaced_ = false;
         if (parent_) parent_->invalidate();
-        return true;
+        return CONSUME;
     }
     
-    return false;
+    return PROPAGATE;
 }

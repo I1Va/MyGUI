@@ -4,7 +4,6 @@
 #include "UIManager.h"
 #include "Widget.h"
 
-
 UIManager::UIManager(int width, int height, Uint32 frameDelay)
     : frameDelayMs_(frameDelay)
 {
@@ -96,6 +95,60 @@ void UIManager::globalStateOnMouseDown(Widget *wgt, const MouseButtonEvent &even
     }
 }
 
+
+bool UIManager::modalWidgetsOnMouseMove(const MouseMotionEvent &event) {
+    for (Widget *modalWgt : modalWidgets_) {
+        if (modalWgt->isHiden()) continue;
+        if (modalWgt->onMouseMove(event) == CONSUME) return CONSUME;
+    }
+
+    return PROPAGATE;
+}
+
+bool UIManager::modalWidgetsOnKeyDown(const KeyEvent &event) {    
+    for (Widget *modalWgt : modalWidgets_) {
+        if (modalWgt->isHiden()) continue;
+        if (modalWgt->onKeyDown(event) == CONSUME) return CONSUME;
+    }
+
+    return PROPAGATE;
+}
+
+bool UIManager::modalWidgetsOnKeyUp(const KeyEvent &event) {    
+    for (Widget *modalWgt : modalWidgets_) {
+        if (modalWgt->isHiden()) continue;
+        if (modalWgt->onKeyUp(event) == CONSUME) return CONSUME;
+    }
+
+    return PROPAGATE;
+}
+
+bool UIManager::modalWidgetsOnMouseWheel(const MouseWheelEvent &event) {    
+    for (Widget *modalWgt : modalWidgets_) {
+        if (modalWgt->isHiden()) continue;
+        if (modalWgt->onMouseWheel(event) == CONSUME) return CONSUME;
+    }
+
+    return PROPAGATE;
+}
+
+bool UIManager::modalWidgetsOnMouseDown(const MouseButtonEvent &event) {
+    for (Widget *modalWgt : modalWidgets_) {
+        if (modalWgt->isHiden()) continue;
+        if (modalWgt->onMouseDown(event) == CONSUME) return CONSUME;
+    }
+    return PROPAGATE;
+}
+
+bool UIManager::modalWidgetsOnMouseUp(const MouseButtonEvent &event) {
+    for (Widget *modalWgt : modalWidgets_) {
+        if (modalWgt->isHiden()) continue;
+        if (modalWgt->onMouseUp(event) == CONSUME) return CONSUME;
+    }
+    return PROPAGATE;
+}
+
+
 void UIManager::handleSDLEvents(bool *running) {
    
     static gm_dot<int, 2> prevMousePos = {0, 0};
@@ -116,21 +169,17 @@ void UIManager::handleSDLEvents(bool *running) {
         switch (SDLEvent.type) {
             case SDL_KEYDOWN:
                 keyEvent = KeyEvent(SDLEvent.key.keysym.sym, SDLEvent.key.keysym.mod);
-
-                if (modalWidget_ && !modalWidget_->isHiden())
-                    if (modalWidget_->onKeyDown(keyEvent)) break;
-
-                globalStateOnKeyDown(wTreeRoot_, keyEvent);
+                
+                if (modalWidgetsOnKeyDown(keyEvent) == CONSUME) break;
+                if (wTreeRoot_) globalStateOnKeyDown(wTreeRoot_, keyEvent);
                 if (glState_.mouseActived) glState_.mouseActived->onKeyDown(keyEvent);
                 break;
             
             case SDL_KEYUP:
                 keyEvent = KeyEvent(SDLEvent.key.keysym.sym, SDLEvent.key.keysym.mod);
 
-                if (modalWidget_ && !modalWidget_->isHiden())
-                    if (modalWidget_->onKeyUp(keyEvent)) break;
-                
-                globalStateOnKeyDown(wTreeRoot_, keyEvent);
+                if (modalWidgetsOnKeyUp(keyEvent) == CONSUME) break;
+                if (wTreeRoot_) globalStateOnKeyDown(wTreeRoot_, keyEvent);
                 if (glState_.mouseActived) glState_.mouseActived->onKeyUp(keyEvent);
                 break;
 
@@ -139,41 +188,32 @@ void UIManager::handleSDLEvents(bool *running) {
                 mouseMotionEvent = MouseMotionEvent(curMousePos.x, curMousePos.y, SDLEvent.button.button, 
                                     curMousePos.x - prevMousePos.x, curMousePos.y - prevMousePos.y);
                 
-                if (modalWidget_ && !modalWidget_->isHiden())
-                    if (modalWidget_->onMouseMove(mouseMotionEvent)) break;
-
-                globalStateOnMouseMove(wTreeRoot_, mouseMotionEvent);
-                wTreeRoot_->onMouseMove(mouseMotionEvent);
+                if (modalWidgetsOnMouseMove(mouseMotionEvent) == CONSUME) break;
+                if (wTreeRoot_) globalStateOnMouseMove(wTreeRoot_, mouseMotionEvent);
+                if (wTreeRoot_) wTreeRoot_->onMouseMove(mouseMotionEvent);
                 break;
             
             case SDL_MOUSEWHEEL:
                 mouseWheelEvent = MouseWheelEvent(SDLEvent.wheel.x, SDLEvent.wheel.y);
                     
-                if (modalWidget_ && !modalWidget_->isHiden())
-                    if (modalWidget_->onMouseWheel(mouseWheelEvent)) break;
-
-                globalStateOnMouseWheel(wTreeRoot_, mouseWheelEvent);
+                if (modalWidgetsOnMouseWheel(mouseWheelEvent) == CONSUME) break;
+                if (wTreeRoot_) globalStateOnMouseWheel(wTreeRoot_, mouseWheelEvent);
                 if (glState_.mouseActived) glState_.mouseActived->onMouseWheel(mouseWheelEvent);
-                
                 break;
             
             case SDL_MOUSEBUTTONDOWN:
                 mouseButtonEvent = MouseButtonEvent(SDLEvent.button.x, SDLEvent.button.y, SDLEvent.button.button);
                 
-                if (modalWidget_ && !modalWidget_->isHiden())
-                    if (modalWidget_->onMouseDown(mouseButtonEvent)) break;
-
-                globalStateOnMouseDown(wTreeRoot_, mouseButtonEvent);
-                wTreeRoot_->onMouseDown(mouseButtonEvent);
+                if (modalWidgetsOnMouseDown(mouseButtonEvent) == CONSUME) break;
+                if (wTreeRoot_) globalStateOnMouseDown(wTreeRoot_, mouseButtonEvent);
+                if (wTreeRoot_) wTreeRoot_->onMouseDown(mouseButtonEvent);
                 break;
     
             case SDL_MOUSEBUTTONUP:
                 mouseButtonEvent = MouseButtonEvent(SDLEvent.button.x, SDLEvent.button.y, SDLEvent.button.button);
 
-                if (modalWidget_ && !modalWidget_->isHiden())
-                    if (modalWidget_->onMouseUp(mouseButtonEvent)) break;
-
-                wTreeRoot_->onMouseUp(mouseButtonEvent);
+                if (modalWidgetsOnMouseUp(mouseButtonEvent) == CONSUME) break;
+                if (wTreeRoot_) wTreeRoot_->onMouseUp(mouseButtonEvent);
                 break;
             
             default:
@@ -192,6 +232,35 @@ void UIManager::initWTree(Widget *wgt) {
     }
 }
 
+void UIManager::updatePass() {
+    if (wTreeRoot_) wTreeRoot_->update();
+
+    for (Widget *modalWgt : modalWidgets_) {
+        modalWgt->update();
+    }
+
+    for (std::function<void(int)> userEvent : userEvents_)
+        userEvent(frameDelayMs_);
+}
+
+void UIManager::renderPass() {
+    if (wTreeRoot_) {
+        wTreeRoot_->render(renderer_);
+        SDL_Rect dst = wTreeRoot_->rect();
+        SDL_RenderCopy(renderer_, wTreeRoot_->texture(), NULL, &dst);
+    }
+
+    for (Widget *modalWgt : modalWidgets_)  {
+        if (modalWgt->isHiden()) continue;
+
+        modalWgt->render(renderer_);
+        assert(modalWgt->texture());
+    
+        SDL_Rect dst = modalWgt->rect();
+        SDL_RenderCopy(renderer_, modalWgt->texture(), NULL, &dst);
+    }
+}
+
 void UIManager::run() {
     static bool firstRun = true;
     if (firstRun && wTreeRoot_) initWTree(wTreeRoot_);
@@ -207,30 +276,12 @@ void UIManager::run() {
         handleSDLEvents(&running);
 
         // updates
-        if (wTreeRoot_) wTreeRoot_->update();
-        if (modalWidget_ && !modalWidget_->isHiden()) modalWidget_->update();
-        for (std::function<void(int)> userEvent : userEvents_)
-            userEvent(frameDelayMs_);
-
-        // render pass
+        updatePass();
+        
+        // render 
         SDL_SetRenderDrawColor(renderer_, 50, 50, 50, 255);
         SDL_RenderClear(renderer_);
-
-        if (wTreeRoot_) {
-            wTreeRoot_->render(renderer_);
-            assert(wTreeRoot_->texture());
-            SDL_Rect dst = wTreeRoot_->rect();
-            SDL_RenderCopy(renderer_, wTreeRoot_->texture(), NULL, &dst);
-        }
-
-        if (modalWidget_ && !modalWidget_->isHiden()) {
-            modalWidget_->render(renderer_);
-            assert(modalWidget_->texture());
-        
-            SDL_Rect dst = modalWidget_->rect();
-            SDL_RenderCopy(renderer_, modalWidget_->texture(), NULL, &dst);
-        }
-
+        renderPass();
         SDL_RenderPresent(renderer_);
 
         // frame pacing

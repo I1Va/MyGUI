@@ -10,7 +10,7 @@ Container::~Container() {
 }
 
 bool Container::onMouseDown(const MouseButtonEvent &event) {
-    if (!isInsideRect(rect_, event.pos.x, event.pos.y)) return false; 
+    if (!isInsideRect(rect_, event.pos.x, event.pos.y)) return PROPAGATE; 
 
     for (Widget *child : children_) {
         MouseButtonEvent childLocal = event;
@@ -18,44 +18,44 @@ bool Container::onMouseDown(const MouseButtonEvent &event) {
         childLocal.pos.x -= rect_.x;
         childLocal.pos.y -= rect_.y;
     
-        if (child->onMouseDown(childLocal)) return true; // stop propagation
+        if (child->onMouseDown(childLocal) == CONSUME) return CONSUME; // stop propagation
     }
 
-    if (onMouseDownSelfAction(event)) return true;
+    if (onMouseDownSelfAction(event) == CONSUME) return CONSUME;
 
-    return false; // propagate
+    return PROPAGATE; // propagate
 }
 
 bool Container::onMouseUp(const MouseButtonEvent &event) {
-    if (!isInsideRect(rect_, event.pos.x, event.pos.y)) return false;
+    if (!isInsideRect(rect_, event.pos.x, event.pos.y)) return PROPAGATE;
 
     for (Widget *child : children_) {
         MouseButtonEvent childLocal = event;
         childLocal.pos.x -= rect_.x;
         childLocal.pos.y -= rect_.y;
     
-        if (child->onMouseUp(childLocal)) return true;
+        if (child->onMouseUp(childLocal) == CONSUME) return CONSUME;
     }
 
-    if (onMouseUpSelfAction(event)) return true;
+    if (onMouseUpSelfAction(event) == CONSUME) return CONSUME;
 
-    return false;
+    return PROPAGATE;
 }
 
 bool Container::onMouseMove(const MouseMotionEvent &event) {
-    if (!isInsideRect(rect_, event.pos.x, event.pos.y)) return false;
+    if (!isInsideRect(rect_, event.pos.x, event.pos.y)) return PROPAGATE;
     
     for (Widget *child : children_) {
         MouseMotionEvent childLocal = event;
         childLocal.pos.x -= rect_.x;
         childLocal.pos.y -= rect_.y;
 
-        if (child->onMouseMove(childLocal)) return true;
+        if (child->onMouseMove(childLocal) == CONSUME) return CONSUME;
     }
 
-    if (onMouseMoveSelfAction(event)) return true;
+    if (onMouseMoveSelfAction(event) == CONSUME) return CONSUME;
     
-    return false;
+    return PROPAGATE;
 }
 
 void reorderWidgets(std::vector<std::pair<bool, Widget *>> &reorderingBufer) {
@@ -112,7 +112,7 @@ bool Container::render(SDL_Renderer* renderer) {
 
     SDL_SetTextureBlendMode(texture_, SDL_BLENDMODE_BLEND);
     SDL_SetTextureAlphaMod(texture_, 255);
-
+    
     SDL_SetRenderTarget(renderer, texture_);
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 
@@ -133,7 +133,8 @@ bool Container::render(SDL_Renderer* renderer) {
         }
     }
 
-    needRerender_ = false;  
+    needRerender_ = false; 
+    
     return true;
 }
 

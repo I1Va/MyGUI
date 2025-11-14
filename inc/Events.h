@@ -4,6 +4,12 @@
 
 #include "gm_primitives.hpp"
 
+
+enum EventPropagationNum: bool {
+    CONSUME = false,
+    PROPAGATE = true
+};
+
 struct CordEvent {
     gm_dot<int, 2> pos;
     CordEvent(int x, int y): pos(x, y) {}
