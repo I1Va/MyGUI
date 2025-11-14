@@ -1,11 +1,8 @@
 #ifndef EVENTS_H
 #define EVENTS_H
-
 #include <SDL2/SDL.h>
 
-
-struct Event {
-};
+#include "gm_primitives.hpp"
 
 struct CordEvent {
     gm_dot<int, 2> pos;
