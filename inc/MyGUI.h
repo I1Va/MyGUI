@@ -59,7 +59,8 @@ struct UIManagerglobalState {
 };
 
 class UIManager {
-    Widget *wTreeRoot_ = nullptr;
+    Widget *wTreeRoot_   = nullptr;
+    Widget *modalWidget_ = nullptr; 
     UIManagerglobalState glState_;
     Uint32 frameDelayMs_;
 
@@ -83,6 +84,9 @@ public: // user API
     ~UIManager();
 
     void setMainWidget(int x, int y, Widget *mainWidget);
+    void pinModalWidget(int x, int y, Widget *modalWidget);
+    void unpinModalWidget();
+
     void run();
     const Widget *hovered() const { return glState_.hovered; }
     void setHovered(Widget *widget) { glState_.hovered = widget; }
@@ -104,6 +108,7 @@ protected:
     SDL_Texture* texture_ = nullptr;
 
     bool needRerender_ = true;
+    bool isHiden_ = false; 
 
 public:
     Widget(int width, int height, Widget *parent = nullptr);
@@ -133,6 +138,10 @@ public:
     virtual bool onKeyUpSelfAction(const KeyEvent &event);
 
     // Getters / Setters
+    bool isHiden() const { return isHiden_; }
+    void hide() { isHiden_ = true; }
+    void show() { isHiden_ = false; }
+    
     virtual const std::vector<Widget *> &getChildren() const;
     void setPosition(int x, int y) { rect_.x = x; rect_.y = y; }
     void setSize(int w, int h) { rect_.w = w; rect_.h = h; }

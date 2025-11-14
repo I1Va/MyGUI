@@ -27,6 +27,9 @@ SDL_Texture* createTexture(const char *texturePath, SDL_Renderer* renderer) {
 
     if (surface) {
         resultTexture = SDL_CreateTextureFromSurface(renderer, surface);
+        assert(resultTexture);
+        SDL_SetTextureBlendMode(resultTexture, SDL_BLENDMODE_BLEND);
+    
         SDL_FreeSurface(surface);
     }
 
@@ -61,6 +64,7 @@ SDL_Texture* createFontTexture(TTF_Font* font, const char text[], SDL_Color text
     SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
     assert(textTexture);
 
+    SDL_SetTextureBlendMode(textTexture, SDL_BLENDMODE_BLEND);
     SDL_FreeSurface(textSurface);
 
     return textTexture;
@@ -142,7 +146,8 @@ UIManager::UIManager(int width, int height, Uint32 frameDelay)
         assert(0);
     }
 
-    renderer_ = SDL_CreateRenderer(mainWindow_, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    renderer_ = SDL_CreateRenderer(mainWindow_, -1, SDL_RENDERER_ACCELERATED);
+    SDL_SetRenderDrawBlendMode(renderer_, SDL_BLENDMODE_BLEND);
     assert(renderer_);
 }
 
@@ -172,6 +177,17 @@ void UIManager::setMainWidget(int x, int y, Widget *mainWidget) {
     }
     mainWidget->setPosition(x, y);
     wTreeRoot_ = mainWidget;
+}
+
+void UIManager::pinModalWidget(int x, int y, Widget *modalWidget) {
+    assert(modalWidget);
+
+    modalWidget->setPosition(x, y);
+    modalWidget_ = modalWidget;
+}
+
+void UIManager::unpinModalWidget() {
+    modalWidget_ = nullptr;
 }
 
 void UIManager::globalStateOnMouseMove(Widget *wgt, const MouseMotionEvent &event) {
@@ -231,16 +247,23 @@ void UIManager::handleSDLEvents(bool *running) {
             break;
         }
 
-       
         switch (SDLEvent.type) {
             case SDL_KEYDOWN:
                 keyEvent = KeyEvent(SDLEvent.key.keysym.sym, SDLEvent.key.keysym.mod);
+
+                if (modalWidget_ && !modalWidget_->isHiden())
+                    if (modalWidget_->onKeyDown(keyEvent)) break;
+
                 globalStateOnKeyDown(wTreeRoot_, keyEvent);
                 if (glState_.mouseActived) glState_.mouseActived->onKeyDown(keyEvent);
                 break;
             
             case SDL_KEYUP:
                 keyEvent = KeyEvent(SDLEvent.key.keysym.sym, SDLEvent.key.keysym.mod);
+
+                if (modalWidget_ && !modalWidget_->isHiden())
+                    if (modalWidget_->onKeyUp(keyEvent)) break;
+                
                 globalStateOnKeyDown(wTreeRoot_, keyEvent);
                 if (glState_.mouseActived) glState_.mouseActived->onKeyUp(keyEvent);
                 break;
@@ -249,6 +272,9 @@ void UIManager::handleSDLEvents(bool *running) {
                 SDL_GetMouseState(&curMousePos.x, &curMousePos.y);
                 mouseMotionEvent = MouseMotionEvent(curMousePos.x, curMousePos.y, SDLEvent.button.button, 
                                     curMousePos.x - prevMousePos.x, curMousePos.y - prevMousePos.y);
+                
+                if (modalWidget_ && !modalWidget_->isHiden())
+                    if (modalWidget_->onMouseMove(mouseMotionEvent)) break;
 
                 globalStateOnMouseMove(wTreeRoot_, mouseMotionEvent);
                 wTreeRoot_->onMouseMove(mouseMotionEvent);
@@ -256,7 +282,10 @@ void UIManager::handleSDLEvents(bool *running) {
             
             case SDL_MOUSEWHEEL:
                 mouseWheelEvent = MouseWheelEvent(SDLEvent.wheel.x, SDLEvent.wheel.y);
-            
+                    
+                if (modalWidget_ && !modalWidget_->isHiden())
+                    if (modalWidget_->onMouseWheel(mouseWheelEvent)) break;
+
                 globalStateOnMouseWheel(wTreeRoot_, mouseWheelEvent);
                 if (glState_.mouseActived) glState_.mouseActived->onMouseWheel(mouseWheelEvent);
                 
@@ -264,13 +293,19 @@ void UIManager::handleSDLEvents(bool *running) {
             
             case SDL_MOUSEBUTTONDOWN:
                 mouseButtonEvent = MouseButtonEvent(SDLEvent.button.x, SDLEvent.button.y, SDLEvent.button.button);
-                    
+                
+                if (modalWidget_ && !modalWidget_->isHiden())
+                    if (modalWidget_->onMouseDown(mouseButtonEvent)) break;
+
                 globalStateOnMouseDown(wTreeRoot_, mouseButtonEvent);
                 wTreeRoot_->onMouseDown(mouseButtonEvent);
                 break;
     
             case SDL_MOUSEBUTTONUP:
                 mouseButtonEvent = MouseButtonEvent(SDLEvent.button.x, SDLEvent.button.y, SDLEvent.button.button);
+
+                if (modalWidget_ && !modalWidget_->isHiden())
+                    if (modalWidget_->onMouseUp(mouseButtonEvent)) break;
 
                 wTreeRoot_->onMouseUp(mouseButtonEvent);
                 break;
@@ -307,6 +342,7 @@ void UIManager::run() {
 
         // updates
         if (wTreeRoot_) wTreeRoot_->update();
+        if (modalWidget_ && !modalWidget_->isHiden()) modalWidget_->update();
         for (std::function<void(int)> userEvent : userEvents_)
             userEvent(frameDelayMs_);
 
@@ -319,6 +355,14 @@ void UIManager::run() {
             assert(wTreeRoot_->texture());
             SDL_Rect dst = wTreeRoot_->rect();
             SDL_RenderCopy(renderer_, wTreeRoot_->texture(), NULL, &dst);
+        }
+
+        if (modalWidget_ && !modalWidget_->isHiden()) {
+            modalWidget_->render(renderer_);
+            assert(modalWidget_->texture());
+        
+            SDL_Rect dst = modalWidget_->rect();
+            SDL_RenderCopy(renderer_, modalWidget_->texture(), NULL, &dst);
         }
 
         SDL_RenderPresent(renderer_);
@@ -361,7 +405,13 @@ bool Widget::render(SDL_Renderer* renderer) {
                                  rect_.w, rect_.h);
     assert(texture_);
 
+    SDL_SetTextureBlendMode(texture_, SDL_BLENDMODE_BLEND);
+    SDL_SetTextureAlphaMod(texture_, 255);
+
     SDL_SetRenderTarget(renderer, texture_);
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
     SDL_RenderClear(renderer);
 
     renderSelfAction(renderer);
@@ -540,7 +590,13 @@ bool Container::render(SDL_Renderer* renderer) {
                                  SDL_TEXTUREACCESS_TARGET,
                                  rect_.w, rect_.h);
 
+    SDL_SetTextureBlendMode(texture_, SDL_BLENDMODE_BLEND);
+    SDL_SetTextureAlphaMod(texture_, 255);
+
     SDL_SetRenderTarget(renderer, texture_);
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
     SDL_RenderClear(renderer);
 
     renderSelfAction(renderer);
